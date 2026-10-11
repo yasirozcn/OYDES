@@ -23,7 +23,7 @@ export default async function Home() {
           <>
             <p className="font-medium text-emerald-700">Ortak veritabanına bağlı · {r.health.latencyMs} ms</p>
             <p className="text-sm text-slate-500">
-              Sunucu saati: {new Date(r.health.serverTime).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })}
+              Sunucu saati:test {new Date(r.health.serverTime).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })}
             </p>
             <table className="mt-4 text-sm">
               <tbody>
