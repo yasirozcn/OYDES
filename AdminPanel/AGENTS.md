@@ -41,10 +41,10 @@ AdminPanel/
 ├── AGENTS.md, CLAUDE.md ✅ · README.md ⏳ · .env.example ✅ · .gitignore ✅
 ├── package.json ✅ (uçtan uca test eklenirken "test:e2e" betiği eklenir) · package-lock.json ✅
 ├── next.config.ts ✅ · tsconfig.json ✅ · eslint.config.mjs ✅ · postcss.config.mjs ✅
-├── Dockerfile ⏳ · .dockerignore ⏳
+├── Dockerfile ✅ · .dockerignore ✅
 ├── public/.gitkeep ✅
 ├── db/schema.sql ✅                          tek şema dosyası (yalnızca proje sahibi uygular)
-├── deploy/ ⏳                         docker-compose.yml · Caddyfile · .env.example · sunucu-hazirla.sh · yedek-al.sh
+├── deploy/ ✅                         docker-compose.yml (app + caddy; veritabanı infra/dev-db) · Caddyfile · .env.example · sunucu-hazirla.sh · yedek-al.sh
 ├── scripts/
 │   ├── db-check.mjs ✅                        ortak veritabanı bağlantı kontrolü (bu projeye özgü)
 │   ├── db-setup.mjs ✅                        şemayı uygular (DATABASE_OWNER_URL — yalnızca proje sahibi)
@@ -52,7 +52,7 @@ AdminPanel/
 │   └── e2e-test.mjs ⏳                uçtan uca API testi (kendi verisini oluşturur ve siler)
 └── src/
     ├── lib/
-    │   ├── db/pg.ts ✅ · db/types.ts ✅ · db/seed.ts ✅
+    │   ├── db/pg.ts ✅ · db/types.ts ✅
     │   ├── db/repo.ts ✅ (+ kiosk silme ve kiosk tablet hesapları için 4 fonksiyon eklenecek — §3.2)
     │   ├── config.ts ⏳               ortam değişkenleri (tek yer)
     │   ├── auth.ts ⏳                 signToken, verifyToken, bearerClaims
@@ -60,6 +60,7 @@ AdminPanel/
     │   ├── whatsapp.ts ⏳     formatTime, formatDateTime, buildWhatsAppBody, dispatchWhatsApp
     │   ├── session.ts ⏳              createWebSession, destroyWebSession, getWebAdmin, requireWebAdmin
     │   ├── protocol.ts ⏳             QR/BLE/imza — mobildeki ile birebir aynı kurallar
+    │   ├── phone.ts ✅                normalizePhone, phoneField — öğrenci giriş kimliği (+905XXXXXXXXX)
     │   └── scan.ts ⏳         REJECT_MESSAGES, ScanInput, ScanResult, processScan, manualEvent
     ├── components/
     │   ├── AutoRefresh.tsx ⏳          sayfayı N sn'de bir yeniler
@@ -83,7 +84,7 @@ AdminPanel/
         │   └── whatsapp/page.tsx ⏳
         └── api/mobile/
             ├── config/route.ts ⏳
-            ├── student/check-email/route.ts ⏳ · student/set-password/route.ts ⏳
+            ├── student/check-phone/route.ts ✅ · student/set-password/route.ts ⏳
             ├── student/login/route.ts ⏳ · student/me/route.ts ⏳
             ├── scan/route.ts ⏳
             ├── admin/login/route.ts ⏳
@@ -128,7 +129,7 @@ export const GET = handler(async (req: Request) => {
 ### 3.2 Repo fonksiyonları (`src/lib/db/repo.ts`)
 
 **Hazır olanlar** (yeniden yazmayın, yalnızca çağırın):
-`newId, findStudentByEmail, getStudent, listStudents (StudentRow), createStudent, setStudentPassword, getActiveDevice, getActiveDeviceForStudent, BindError, setFirstPasswordAndBindDevice, resetStudentPassword, resetStudentDevice, findAdminByEmail, getAdmin, listKiosks, getKiosk, touchKiosk, createKiosk, setKioskStatus, insertScanAttempt, isReplay, lastEventForStudent, createEventWithWhatsApp, updateWhatsAppMessage, getEvent, reviewEvent, listEvents (EventRow), listScanAttempts (AttemptRow), listKioskAttempts, listWhatsAppMessages, dashboardStats, addAudit, listAudit, dbHealth`.
+`newId, findStudentByPhone, getStudent, listStudents (StudentRow), createStudent, setStudentPassword, getActiveDevice, getActiveDeviceForStudent, BindError, setFirstPasswordAndBindDevice, resetStudentPassword, resetStudentDevice, findAdminByEmail, getAdmin, listKiosks, getKiosk, touchKiosk, createKiosk, setKioskStatus, insertScanAttempt, isReplay, lastEventForStudent, createEventWithWhatsApp, updateWhatsAppMessage, getEvent, reviewEvent, listEvents (EventRow), listScanAttempts (AttemptRow), listKioskAttempts, listWhatsAppMessages, dashboardStats, addAudit, listAudit, dbHealth`.
 
 **Eklenecek 4 fonksiyon** (referanstaki `repo.ts` ile birebir aynı; ekleme yerleri referanstaki gibi):
 ```ts
@@ -162,7 +163,7 @@ export async function deleteKiosk(id: string): Promise<boolean> {
 
 | Tablo | Amaç / önemli kolonlar | Kısıtlar |
 | --- | --- | --- |
-| `students` | school_no, first_name, last_name, email, class_name, password_hash (null = henüz şifre yok), presence_status `IN/OUT` (varsayılan OUT), is_active | `lower(email)` tekil |
+| `students` | school_no, first_name, last_name, phone (giriş kimliği, `+905XXXXXXXXX`), email (isteğe bağlı), class_name, password_hash (null = henüz şifre yok), presence_status `IN/OUT` (varsayılan OUT), is_active | `phone` tekil, `lower(email)` tekil (ikisi de boş olabilir; telefonu olmayan öğrenci giriş yapamaz) |
 | `guardians` | full_name, phone | |
 | `student_guardians` | student_id, guardian_id, relation, notify_entry, notify_exit | PK (student_id, guardian_id); öğrenci silinince CASCADE |
 | `devices` | id = uygulamanın ürettiği deviceId, student_id, platform, device_secret, status `ACTIVE/REVOKED`, bound_at, revoked_at, revoked_by | öğrenci başına tek ACTIVE (kısmi tekil indeks); öğrenci silinince CASCADE |
@@ -189,7 +190,7 @@ Sayfalar sunucu bileşenidir, veriyi doğrudan repo'dan okur ve `export const dy
 | `/login` | `login/page.tsx` + `LoginForm.tsx` | `getWebAdmin` | Oturum varsa `/`'e yönlendir. Solda koyu tanıtım paneli (geniş ekranda): logo `İF`, "İzmir Fen", "Giriş-Çıkış Yönetim Paneli", büyük başlık "Kim okulda, kim çıktı — tek bakışta.". Sağda "Giriş-Çıkış Yönetim Paneli", "Yönetici hesabınızla giriş yapın.", form: E-posta, Şifre, "Giriş yap" / "Giriş yapılıyor…" |
 | `/` | `(panel)/page.tsx` | `dashboardStats()`, `listEvents({ limit: 15 })` | "Canlı durum" + `<AutoRefresh seconds={10} />`; 4 kart: **Okulda** (`inside`, "`total` öğrenciden", altında doluluk çubuğu), **Dışarıda** (`outside`, "şu an"), **Bugünkü hareket** (`todayEvents`, "`unreviewed` incelenmedi"), **Reddedilen okutma** (`rejectedToday`, "bugün"; >0 ise kırmızı kart). "Son hareketler" tablosu + "Tümünü gör →" `/hareketler` |
 | `/hareketler` | `(panel)/hareketler/page.tsx` | `listEvents({ review, onlyFlagged, limit: 300 })` | Filtre `?f=`: Tümü · İncelenmedi (`unreviewed`) · Dikkat gerekenler (`flagged`) · Şüpheli (`suspicious`). Tablo + "Uygun"/"Şüpheli" düğmeleri; şüpheli satır açık kırmızı; not varsa "Not: …" |
-| `/ogrenciler` | `(panel)/ogrenciler/page.tsx` + `StudentForms.tsx` | `listStudents()` | Tablo (Öğrenci · E-posta · Veli · Durum · Cihaz · İşlemler) + "Yeni öğrenci ekle" formu |
+| `/ogrenciler` | `(panel)/ogrenciler/page.tsx` + `StudentForms.tsx` | `listStudents()` | Tablo (Öğrenci · Telefon · Veli · Durum · Cihaz · İşlemler) + "Yeni öğrenci ekle" formu |
 | `/kiosklar` | `(panel)/kiosklar/page.tsx` + `DeleteKioskButton.tsx` + `AccountForms.tsx` | `listKiosks()`, `listKioskAccounts()` | Kiosk tablosu (Ad · Durum · Son sinyal · Devre dışı bırak/Etkinleştir + Sil), "Yeni kiosk" formu, "Kiosk tablet hesapları" tablosu (Ad · E-posta · şifre sıfırlama formu) + "Yeni kiosk hesabı" formu |
 | `/denemeler` | `(panel)/denemeler/page.tsx` | `listScanAttempts(true, 300)` | "Reddedilen okutmalar": Zaman · Öğrenci · Kiosk · Neden (kod rozeti + `REJECT_MESSAGES` açıklaması) · BLE ("doğru"/"hatalı" + " · -60 dBm", jeton yoksa "yok") |
 | `/whatsapp` | `(panel)/whatsapp/page.tsx` | `listWhatsAppMessages(300)` | Açıklama: `mock` ise "Test modu: WhatsApp mesajları gerçekten gönderilmez, yalnızca burada ve sunucu konsolunda görünür." değilse "Sağlayıcı: …". Tablo: Zaman · Öğrenci · Telefon · Mesaj · Durum (FAILED kırmızı, QUEUED sarı, diğerleri yeşil) |
@@ -205,7 +206,7 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | --- | --- | --- | --- | --- | --- |
 | `resetPasswordAction(form)` | `studentId` | `resetStudentPassword` | `PASSWORD_RESET` (student) | `/ogrenciler` | Cihaz bağlı kalır |
 | `resetDeviceAction(form)` | `studentId` | `resetStudentDevice(id, admin.id)` | `DEVICE_RESET` (student) | `/ogrenciler` | Cihaz REVOKED + şifre silinir |
-| `createStudentAction(prev, form)` | `schoolNo, firstName, lastName, className, email, guardianName, guardianPhone` | `createStudent` | `STUDENT_CREATED` (student) `{ email }` | `/ogrenciler` | Dönüş `{ error?, ok? }`; zod hatası → "Lütfen zorunlu alanları doğru doldurun."; repo hatası mesajı aynen döner |
+| `createStudentAction(prev, form)` | `schoolNo, firstName, lastName, className, phone, email (isteğe bağlı), guardianName, guardianPhone` | `createStudent` (telefon `phoneField` ile çevrilir) | `STUDENT_CREATED` (student) `{ phone }` | `/ogrenciler` | Dönüş `{ error?, ok? }`; zod hatası → "Lütfen zorunlu alanları doğru doldurun."; repo hatası mesajı aynen döner |
 | `manualEventAction(form)` | `studentId, direction, note` | `getStudent` + `manualEvent` (scan.ts) | `MANUAL_EVENT` (attendance_event) `{ direction, note }` | `/`, `/ogrenciler`, `/hareketler` | Not boşsa "Manuel kayıt"; yön mevcut durumla aynıysa sessizce çık |
 | `reviewEventAction(form)` | `eventId, status` (OK/SUSPICIOUS) | `reviewEvent(id, status, admin.id)` | `EVENT_REVIEWED` (attendance_event) `{ status }` | `/hareketler`, `/` | |
 | `createKioskAction(form)` | `name` | `createKiosk(name)` | `KIOSK_CREATED` (kiosk) `{ name }` | `/kiosklar` | Ad boşsa çık |
@@ -228,7 +229,7 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 - Her route `export const GET|POST = handler(async (req, ctx?) => { … })` biçimindedir; gövde `await body(req, zodSchema)`; hata `throw new ApiError(status, "Türkçe mesaj", "KOD")`.
 - Dinamik route parametresi Next.js 16'da Promise'tir: `ctx: { params: Promise<{ id: string }> }` → `const { id } = await ctx.params;`.
 - Kimlik: `requireStudent(req)` / `requireKioskAdmin(req)`. `GET /student/me` ayrıca cihazın hâlâ ACTIVE ve o öğrenciye bağlı olduğunu kontrol eder (`DEVICE_REVOKED`).
-- `rateLimit` (bellek içi, 10 dk pencere): check-email 30/IP · set-password 8/e-posta + 30/IP · login 10/e-posta + 50/IP · admin login 10/e-posta + 30/IP. Anahtarlar: `check:<ip>`, `setpw:<email>`, `setpw-ip:<ip>`, `login:<email>`, `login-ip:<ip>`, `admin:<email>`, `admin-ip:<ip>` (e-posta küçük harf).
+- `rateLimit` (bellek içi, 10 dk pencere): check-phone 30/IP · set-password 8/telefon + 30/IP · login 10/telefon + 50/IP · admin login 10/e-posta + 30/IP. Anahtarlar: `check:<ip>`, `setpw:<phone>`, `setpw-ip:<ip>`, `login:<phone>`, `login-ip:<ip>`, `admin:<email>`, `admin-ip:<ip>` (telefon +905… biçiminde, e-posta küçük harf).
 - Okutma kuralları yalnızca `scan.ts`'te; route ince kalır. Her okutma sunucu loguna tek satır: `[scan] KABUL (IN) · öğrenci … · kiosk … · BLE <jeton> RSSI -60 → EŞLEŞTİ`.
 - WhatsApp gönderimi yanıtı bekletmez: `void dispatchWhatsApp(messages)`.
 
@@ -242,12 +243,14 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | `requireStudent` | 401 `UNAUTHORIZED` | Oturum süresi doldu. Tekrar giriş yapın. |
 | `requireKioskAdmin` | 401 `UNAUTHORIZED` | Yönetici oturumu gerekli. |
 | `rateLimit` | 429 `RATE_LIMIT` | Çok fazla deneme yapıldı. Birkaç dakika sonra tekrar deneyin. |
-| check-email / set-password | 404 `NOT_FOUND` | Bu e-posta adresi okul kayıtlarında bulunamadı. |
-| check-email | 409 `DEVICE_TAKEN` | Bu telefon başka bir öğrenci hesabına bağlı. Bir telefonda yalnızca bir öğrenci hesabı kullanılabilir. |
-| check-email | 403 `WRONG_DEVICE` | Hesabınız başka bir telefona bağlı. Telefon değiştirdiyseniz okul yönetiminden cihaz sıfırlaması isteyin. |
+| check-phone / set-password / login (öğrenci) | 400 `VALIDATION` (zod) | Geçerli bir cep telefonu numarası girin. (issues içinde) |
+| check-phone / set-password | 404 `NOT_FOUND` | Bu telefon numarası okul kayıtlarında bulunamadı. |
+| check-phone | 409 `DEVICE_TAKEN` | Bu telefon başka bir öğrenci hesabına bağlı. Bir telefonda yalnızca bir öğrenci hesabı kullanılabilir. |
+| check-phone | 403 `WRONG_DEVICE` | Hesabınız başka bir telefona bağlı. Telefon değiştirdiyseniz okul yönetiminden cihaz sıfırlaması isteyin. |
 | set-password | 400 `VALIDATION` (zod) | Şifre en az 8 karakter olmalı. (issues içinde) |
 | set-password | `BindError` kodu → 404/409/409/403 | `BindError` mesajı (repo.ts'te hazır) |
-| login (öğrenci) / admin login | 401 `BAD_CREDENTIALS` | E-posta veya şifre hatalı. |
+| login (öğrenci) | 401 `BAD_CREDENTIALS` | Telefon numarası veya şifre hatalı. |
+| admin login | 401 `BAD_CREDENTIALS` | E-posta veya şifre hatalı. |
 | login (öğrenci) | 403 `WRONG_DEVICE` | Hesabınız başka bir cihaza bağlı. Telefon değiştirdiyseniz okul yönetiminden cihaz sıfırlaması isteyin. |
 | me | 401 `DEVICE_REVOKED` | Bu cihazın bağlantısı kaldırılmış. Tekrar kayıt olmanız gerekiyor. |
 | me | 404 `NOT_FOUND` | Öğrenci bulunamadı. |
@@ -273,7 +276,6 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | `DATABASE_SSL` | `true` (sunucu SSL'siz bağlantıyı reddeder) |
 | `DATABASE_SSL_REJECT_UNAUTHORIZED` | `false` (sertifika kendinden imzalı; bağlantı yine şifreli) |
 | `DATABASE_POOL_MAX` | `3` |
-| `SEED_SAMPLE_DATA` | Boş veritabanına örnek veri (geliştirmede açık, canlıda kapalı) |
 | `DATABASE_OWNER_URL` | **Yalnızca proje sahibi** — ekipte boş |
 | `AUTH_SECRET` | JWT anahtarı. Boşsa geliştirmede sabit anahtar kullanılır. Herkes kendisi üretir (`openssl rand -hex 32`), paylaşılmaz; canlıda zorunlu (kök AGENTS.md §5.1) |
 | `BLE_REQUIRED` | `true`: BLE jetonu zorunlu (varsayılan `false`) |
@@ -289,7 +291,7 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 ```bash
 npm install
 npm run db:check      # ortak veritabanına bağlantı: SSL, kullanıcı, yetkiler, tablolar, satır sayıları
-npm run dev           # http://localhost:3000 (boş DB'ye ilk bağlanan geliştirici örnek veriyi ekler)
+npm run dev           # http://localhost:3000
 npm run typecheck     # tsc --noEmit  — her işten sonra
 npm run lint          # eslint        — her işten sonra (kök AGENTS.md §9: npx eslint src scripts)
 npm run test:e2e      # uçtan uca test yazıldıktan sonra; npm run dev açıkken ayrı terminalde
@@ -300,25 +302,26 @@ Bu projede **`db:reset` yoktur** ve olmayacaktır (ortak veritabanı).
 **API'yi elle denemek (curl):**
 ```bash
 curl -s localhost:3000/api/mobile/config
-curl -s -X POST localhost:3000/api/mobile/student/check-email -H 'Content-Type: application/json' \
-  -d '{"email":"test+adiniz-1@izmirfen.test","deviceId":"test-cihaz-adiniz-1"}'
+curl -s -X POST localhost:3000/api/mobile/student/check-phone -H 'Content-Type: application/json' \
+  -d '{"phone":"0500 000 00 01","deviceId":"test-cihaz-adiniz-1"}'
 ```
 Şifre içeren istekleri curl ile **komut satırına yazmayın** (kabuk geçmişine girer); bunları `npm run test:e2e` veya mobil uygulamayla deneyin.
 
-**Örnek hesaplar** (`seed.ts`, veritabanı boşken eklenir): panel `admin@fenbahceleri.test` (ADMIN), tablet `kapi@fenbahceleri.test` (KIOSK), 5 öğrenci (`ali.yilmaz@fenbahceleri.test` …), kiosk `kiosk_ana` "Ana Kapı". Şifreler `src/lib/db/seed.ts` içindedir. Bu hesaplar **ortaktır**: şifrelerini/cihazlarını değiştirmeyin; testte kendi test kayıtlarınızı oluşturun (kök AGENTS.md §7.1).
+**Örnek veri yoktur.** Panel hesabı `npm run admin:create` ile açılır; öğrenciler panelden (Öğrenciler sayfası yazılınca) veya proje sahibinin eklediği test kayıtlarıyla gelir. Başkasının kayıtlarının şifresini/cihazını değiştirmeyin; testte kendi test kayıtlarınızı oluşturun (kök AGENTS.md §7.1).
 
 ## 8. Uçtan uca test (`scripts/e2e-test.mjs`)
 
 Referanstaki testin **aynı kontrollerini** yapar; farkı ortak veritabanında **kendi verisini oluşturup silmesidir**:
-- Başta `pg` ile (aynı `DATABASE_URL`, `DATABASE_SSL*` ayarları): benzersiz son ekli (`randomBytes(4).toString("hex")`) test öğrencisi `test+e2e-<ek>@izmirfen.test` (+ velisi), ikinci test öğrencisi (DEVICE_TAKEN kontrolü için), test kiosku `TEST e2e-<ek>`, `role=KIOSK` test hesabı (rastgele şifre, `bcryptjs` ile özet).
+- Başta `pg` ile (aynı `DATABASE_URL`, `DATABASE_SSL*` ayarları): benzersiz son ekli (`randomBytes(4).toString("hex")`) test öğrencisi `E2E Test <ek>` (+ velisi), ikinci test öğrencisi (DEVICE_TAKEN kontrolü için), test kiosku `TEST e2e-<ek>`, `role=KIOSK` test hesabı (rastgele şifre, `bcryptjs` ile özet).
 - Kiosk listesinden **kendi test kioskunu** id ile seçer (ilk kioskun değil).
+- Test öğrencilerinin telefonları `+905000XXXXXX` (0500 000 XX XX) aralığından rastgele seçilir; ilk istek yerel yazımla (`0500 …`) gönderilerek biçim çevirme de denenir.
 - Sonda `try/finally` ile **yalnızca kendi oluşturduklarını** siler, şu sırayla: `scan_attempts WHERE device_id = ANY($1)` → `students WHERE id = ANY($1)` (devices, attendance_events, wp_messages, student_guardians CASCADE) → `guardians WHERE id = ANY($1)` → `kiosks WHERE id = $1` → `admin_users WHERE id = $1`. `audit_logs` silinmez.
 - `package.json`: `"test:e2e": "node --env-file=.env.local scripts/e2e-test.mjs"`; adres `API_URL` (varsayılan `http://localhost:3000`).
 
 ## 9. Yapılmaması gerekenler
 
 - `repo.ts` dışında SQL; ORM eklemek; şemayı değiştirmeye çalışmak.
-- Ortak veritabanında `WHERE`'siz `DELETE/UPDATE`, başkasının (ve örnek verinin) kayıtlarını silmek/değiştirmek, veritabanı adresini/şifresini koda veya loga yazmak.
+- Ortak veritabanında `WHERE`'siz `DELETE/UPDATE`, başkasının kayıtlarını silmek/değiştirmek, veritabanı adresini/şifresini koda veya loga yazmak.
 - İstemciden gelen `direction`'a, öğrenci kimliğine veya zaman damgasına güvenmek (öğrenci kimliği JWT'den, yön sunucudan, tazelik sunucu saatinden).
 - Hata yanıtında stack/SQL ayrıntısı döndürmek; şifre, anahtar, `deviceSecret`, kiosk `secret` veya JWT loglamak.
 - `protocol.ts`'i mobil tarafı güncellemeden değiştirmek.

@@ -22,7 +22,7 @@ Sunucu davranışı değiştiyse (route, scan.ts, actions): `npm run dev` açık
 - SQL yalnızca `src/lib/db/repo.ts`'te. Route, sayfa ve Server Action'lar repo fonksiyonu çağırır. Referans görevlerinde `repo.ts`'e yalnızca AGENTS.md §3.2'deki 4 fonksiyon eklenir. Prompt yeni bir özellik istiyorsa mevcut tablolarla çalışan yeni repo fonksiyonu eklenebilir (parametreli SQL, aynı kalıp); şema değişikliği gerekiyorsa durup sorun.
 - Her Server Action: `requireWebAdmin()` → doğrulama → repo → `addAudit(...)` (AGENTS.md §4.2'deki işlem adlarıyla) → `revalidatePath(...)`.
 - Her mobil route: `handler(...)` + `body(req, zodSchema)` + `ApiError`; mesajlar AGENTS.md §5.2'deki metinlerle **harfi harfine** aynı.
-- Veritabanı AWS'de ve ortaktır: veri silen/değiştiren SQL'den önce kullanıcıya etkilenecek satırları gösterip onay alın. Örnek hesapların (`@fenbahceleri.test`) şifresini/cihazını değiştirmeyin; denemeler için `test+<ad>-…@izmirfen.test` kayıtları oluşturun ve sonunda silin (kullanıcıya hangi satırları sileceğinizi gösterin).
-- Şema değişikliği yok. `db/schema.sql`, `pg.ts`, `types.ts`, `seed.ts`, `scripts/db-*.mjs`, `scripts/create-admin.mjs` dosyalarına dokunmayın.
+- Veritabanı AWS'de ve ortaktır: veri silen/değiştiren SQL'den önce kullanıcıya etkilenecek satırları gösterip onay alın. Başkasının kayıtlarının şifresini/cihazını değiştirmeyin; denemeler için `TEST <ad>` adlı, `0500 000 XX XX` telefonlu kayıtlar oluşturun ve sonunda silin (kullanıcıya hangi satırları sileceğinizi gösterin).
+- Şema değişikliği yok (proje sahibi onayladığı istisna: `students.phone`). `db/schema.sql`, `pg.ts`, `types.ts`, `scripts/db-*.mjs`, `scripts/create-admin.mjs` dosyalarına dokunmayın.
 - Next.js 16 API'lerinden emin değilseniz `node_modules/next/dist/docs/` altındaki ilgili kılavuzu okuyun; referans kod bu sürümle çalışır (`cookies()` ve `params` Promise'tir, `useActionState` `react`'tan gelir).
 - Paket eklemeyin. Gizli bilgi (`.env.local`) okumayın, göstermeyin.

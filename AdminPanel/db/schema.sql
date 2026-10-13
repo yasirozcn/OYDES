@@ -10,14 +10,20 @@ CREATE TABLE IF NOT EXISTS students (
   school_no           text NOT NULL,
   first_name          text NOT NULL,
   last_name           text NOT NULL,
-  email               text NOT NULL,
+  email               text,
+  phone               text,
   class_name          text NOT NULL,
   password_hash       text,
   presence_status     text NOT NULL DEFAULT 'OUT' CHECK (presence_status IN ('IN', 'OUT')),
   is_active           boolean NOT NULL DEFAULT true,
   created_at          timestamptz NOT NULL DEFAULT now()
 );
+-- Öğrenci giriş kimliği telefon numarasıdır (+905XXXXXXXXX); e-posta isteğe bağlı bilgi olarak kalır.
+-- Aşağıdaki iki satır eski şemayla kurulmuş veritabanını günceller (tekrar çalıştırılabilir, veri silmez).
+ALTER TABLE students ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE students ALTER COLUMN email DROP NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS students_email_uq ON students (lower(email));
+CREATE UNIQUE INDEX IF NOT EXISTS students_phone_uq ON students (phone);
 
 CREATE TABLE IF NOT EXISTS guardians (
   id        text PRIMARY KEY,

@@ -10,7 +10,10 @@ export interface Student {
   schoolNo: string;
   firstName: string;
   lastName: string;
-  email: string;
+  /** İsteğe bağlı iletişim bilgisi; girişte kullanılmaz. */
+  email: string | null;
+  /** Giriş kimliği: cep telefonu, +905XXXXXXXXX biçiminde (src/lib/phone.ts). Boşsa öğrenci giriş yapamaz. */
+  phone: string | null;
   className: string;
   /** Öğrencinin şifresi (bcrypt özeti). Boşsa öğrenci uygulamada ilk girişte şifre oluşturur (yönetici sıfırlayınca da boşalır). */
   passwordHash: string | null;
@@ -138,19 +141,4 @@ export interface AuditLog {
   beforeValue: unknown;
   afterValue: unknown;
   createdAt: string;
-}
-
-/** Geçici JSON veritabanının tamamı. Her anahtar bir tabloya karşılık gelir. */
-export interface Database {
-  students: Student[];
-  guardians: Guardian[];
-  studentGuardians: StudentGuardian[];
-  devices: Device[];
-  kiosks: Kiosk[];
-  scanAttempts: ScanAttempt[];
-  attendanceEvents: AttendanceEvent[];
-  whatsAppMessages: WhatsAppMessage[];
-  permissions: Permission[];
-  adminUsers: AdminUser[];
-  auditLogs: AuditLog[];
 }

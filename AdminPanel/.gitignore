@@ -9,3 +9,5 @@ next-env.d.ts
 # gizli ayarlar (şablon hariç)
 .env*
 !.env.example
+# canlı sunucudaki veritabanı yedekleri
+/deploy/yedek/

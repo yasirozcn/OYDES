@@ -1,12 +1,11 @@
 // PostgreSQL bağlantı havuzu. Uygulamanın geri kalanı bunu doğrudan kullanmaz; yalnızca `repo.ts` üzerinden erişir.
 import "server-only";
 import { Pool, types, type PoolClient } from "pg";
-import { buildSeed } from "./seed";
 
 // bigint (time_slot) varsayılan olarak metin döner; kodda sayı bekleniyor.
 types.setTypeParser(types.builtins.INT8, (v) => Number(v));
 
-type PgState = { pool?: Pool; ready?: Promise<void> };
+type PgState = { pool?: Pool };
 // Next.js geliştirme modunda modüller yeniden yüklenebildiği için havuzu globalde tutuyoruz.
 const g = globalThis as unknown as { __fbPg?: PgState };
 const state: PgState = g.__fbPg ?? (g.__fbPg = {});
@@ -42,50 +41,14 @@ export async function insertRow(c: Queryable, table: string, row: object): Promi
   await c.query(`INSERT INTO ${table} (${cols.join(", ")}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(", ")})`, values);
 }
 
-/**
- * Geliştirme kolaylığı: veritabanı boşsa (hiç yönetici yoksa) örnek verileri ekler.
- * Varsayılan: geliştirmede açık, üretimde kapalı. SEED_SAMPLE_DATA=false/true ile değiştirilebilir
- * (true yalnızca test veritabanında, örn. `next start` ile uçtan uca testte kullanılmalı).
- */
-async function seedIfEmpty(): Promise<void> {
-  const enabled = process.env.SEED_SAMPLE_DATA ? process.env.SEED_SAMPLE_DATA === "true" : process.env.NODE_ENV !== "production";
-  if (!enabled) return;
-  const { rows } = await getPool().query("SELECT 1 FROM admin_users LIMIT 1");
-  if (rows.length) return;
-  const db = await buildSeed();
-  await tx(async (c) => {
-    await c.query("SELECT pg_advisory_xact_lock(7426001)"); // aynı anda iki sunucu süreci tohumlamasın
-    const again = await c.query("SELECT 1 FROM admin_users LIMIT 1");
-    if (again.rows.length) return;
-    for (const s of db.students) await insertRow(c, "students", s);
-    for (const x of db.guardians) await insertRow(c, "guardians", x);
-    for (const x of db.studentGuardians) await insertRow(c, "student_guardians", x);
-    for (const x of db.kiosks) await insertRow(c, "kiosks", x);
-    for (const x of db.adminUsers) await insertRow(c, "admin_users", x);
-  }, false);
-  console.log("[db] Boş veritabanına örnek veriler eklendi (src/lib/db/seed.ts).");
-}
-
-function ready(): Promise<void> {
-  if (!state.ready) {
-    state.ready = seedIfEmpty().catch((e) => {
-      state.ready = undefined;
-      throw e;
-    });
-  }
-  return state.ready;
-}
-
 /** Tek sorgu; satırları camelCase döner. */
 export async function q<T = Record<string, unknown>>(text: string, params: unknown[] = []): Promise<T[]> {
-  await ready();
   const r = await getPool().query(text, params);
   return r.rows.map((row) => camel<T>(row));
 }
 
 /** Transaction: fn içindeki tüm sorgular ya birlikte yazılır ya hiç yazılmaz. */
-export async function tx<T>(fn: (c: PoolClient) => Promise<T>, waitReady = true): Promise<T> {
-  if (waitReady) await ready();
+export async function tx<T>(fn: (c: PoolClient) => Promise<T>): Promise<T> {
   const c = await getPool().connect();
   try {
     await c.query("BEGIN");

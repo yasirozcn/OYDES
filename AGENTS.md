@@ -83,9 +83,12 @@ Bu yapılara **dokunmadan** eklenen özellikler (yeni panel sayfası, yeni ekran
 | `app.json` adları / paket kimliği | `com.fenbahceleri.giris` | `com.izmirfen.giris` (hazır) |
 | `eas.json` / EAS `projectId`, `owner` | referansın hesabı | proje sahibinin kendi EAS hesabı (referanstaki kimlikler **kopyalanmaz**) |
 | Canlı ortam adları (`deploy/`) | `fenbahceleri`, `fb_app` | `izmirfen`, `izmirfen_app` |
+| Canlı veritabanı | `deploy/docker-compose.yml` içinde ayrı `db` konteyneri | **Aynı Lightsail sunucusundaki `infra/dev-db` veritabanı** (proje sahibinin kararı): `deploy/` yalnızca `app` + `caddy` çalıştırır, `izmirfen-devdb_default` ağına katılır; şemayı `kur.sh` uygular. Rehber: `CANLIYA_ALMA.md` |
 | Veli bildirimi | SMS (`sms_messages`, yalnızca `mock`) | **WhatsApp** (`wp_messages`, `WHATSAPP_PROVIDER=mock`); gerçek WhatsApp sağlayıcısı isteğe bağlı son görev |
+| Öğrenci giriş kimliği | e-posta (`students.email`, `POST /student/check-email`, gövdelerde `email`) | **cep telefonu** (`students.phone`, tekil, `+905XXXXXXXXX`; `POST /student/check-phone`, gövdelerde `phone`; `src/lib/phone.ts` yazım biçimlerini çevirir). `students.email` isteğe bağlı bilgi |
+| Örnek veri (`seed.ts`, `@fenbahceleri.test` hesapları) | Boş veritabanına otomatik eklenir | **Yok** — yöneticiler `npm run admin:create`, öğrenciler panelden/veritabanından eklenir |
 
-**Değişmeyenler (protokol — dokunmayın):** `FB2`, `BLE_SERVICE_UUID`, BLE yerel ad öneki `"FB"`, panel çerezi `fb_admin`, mobil güvenli depo anahtarları `fb.deviceId / fb.deviceSecret / fb.studentToken / fb.adminToken / fb.boundEmail`, kimlik önekleri (`stu_`, `kiosk_` …), örnek veri (`seed.ts`, `@fenbahceleri.test` hesapları — hazır, değiştirmeyin).
+**Değişmeyenler (protokol — dokunmayın):** `FB2`, `BLE_SERVICE_UUID`, BLE yerel ad öneki `"FB"`, panel çerezi `fb_admin`, mobil güvenli depo anahtarları `fb.deviceId / fb.deviceSecret / fb.studentToken / fb.adminToken / fb.boundEmail`, kimlik önekleri (`stu_`, `kiosk_` …).
 
 ## 1. Ürün
 
@@ -133,26 +136,26 @@ Yeni dosya/klasör açmadan önce burada yerinin olduğundan emin olun; yoksa ö
 ```
 FenBahceleri_IzmırFen/
 ├── AGENTS.md ✅, CLAUDE.md ✅, README.md ✅, .gitignore ✅
-├── CANLIYA_ALMA.md ⏳                     canlı ortam rehberi (maliyet dahil)
+├── CANLIYA_ALMA.md ✅                     canlı ortam rehberi (maliyet dahil)
 ├── infra/dev-db/ ✅                        ortak geliştirme veritabanı (yalnızca proje sahibi çalıştırır)
 │
 ├── AdminPanel/                            Next.js 16 — web paneli + mobil API
 │   ├── AGENTS.md, CLAUDE.md ✅ · README.md ⏳ · .env.example ✅ · package.json ✅ · next.config.ts ✅ · tsconfig.json ✅
-│   ├── Dockerfile ⏳, .dockerignore ⏳, deploy/ ⏳     canlı imaj ve sunucu dosyaları
+│   ├── Dockerfile ✅, .dockerignore ✅, deploy/ ✅     canlı imaj ve sunucu dosyaları
 │   ├── db/schema.sql ✅                    tek şema dosyası
 │   ├── scripts/                           db-check ✅ · db-setup ✅ · create-admin ✅ · e2e-test ⏳
 │   └── src/
 │       ├── lib/
-│       │   ├── db/  pg.ts ✅ · repo.ts ✅ · types.ts ✅ · seed.ts ✅      TÜM veritabanı erişimi burada
+│       │   ├── db/  pg.ts ✅ · repo.ts ✅ · types.ts ✅              TÜM veritabanı erişimi burada
 │       │   ├── config.ts ⏳ · auth.ts ⏳ · session.ts ⏳ · api.ts ⏳         ayarlar, JWT, panel oturumu, route yardımcıları
-│       │   └── protocol.ts ⏳ · scan.ts ⏳ · whatsapp.ts ⏳                  protokol, okutma kuralları, WhatsApp
+│       │   └── protocol.ts ⏳ · scan.ts ⏳ · whatsapp.ts ⏳ · phone.ts ✅       protokol, okutma kuralları, WhatsApp, telefon biçimi
 │       ├── components/  AutoRefresh.tsx ⏳ · Badges.tsx ⏳
 │       └── app/
 │           ├── layout.tsx ✅ · globals.css ✅ · page.tsx ✅ (GEÇİCİ) · api/health/ ✅
 │           ├── login/ ⏳                   page · LoginForm · actions
 │           ├── (panel)/ ⏳                 layout · NavLinks · actions · page (Canlı durum) · hareketler · ogrenciler (+StudentForms)
 │           │                              kiosklar (+AccountForms, DeleteKioskButton) · denemeler · whatsapp · denetim
-│           └── api/mobile/ ⏳              config · student/{check-email,set-password,login,me} · scan · admin/login · kiosks[/:id/{start,feed}]
+│           └── api/mobile/ ⏳              config · student/{check-phone,set-password,login,me} · scan · admin/login · kiosks[/:id/{start,feed}]
 │
 └── QrScannerApp/                          Expo SDK 57 — öğrenci + kiosk uygulaması
     ├── AGENTS.md, CLAUDE.md ✅ · README.md ⏳ · CIHAZ_TESTI.md ⏳ · TESTFLIGHT.md ⏳
@@ -215,16 +218,16 @@ currentSlot(1791125763537) = slotAt(1791125763537, 5) = 358225152
 
 ## 5. Mobil API sözleşmesi
 
-Taban: `${EXPO_PUBLIC_API_URL}/api/mobile`. Gövdeler JSON. Kimlik: `Authorization: Bearer <JWT>`.
+Taban: `${EXPO_PUBLIC_API_URL}/api/mobile`. Gövdeler JSON. `phone`: Türkiye cep numarası; `05XX XXX XX XX`, `5XX…`, `+90 5XX…` yazımları kabul edilir (geçersizse `400 VALIDATION`). Kimlik: `Authorization: Bearer <JWT>`.
 **Hata biçimi her yerde aynıdır:** HTTP durum kodu + `{ "error": "Türkçe, kullanıcıya gösterilebilir mesaj", "code": "MAKINE_KODU" }`.
 Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `429 RATE_LIMIT`.
 
 | Uç nokta | Kimlik | İstek | Başarılı yanıt |
 | --- | --- | --- | --- |
 | `GET /config` | — | — | `{ bleRequired, bleServiceUuid, slotSeconds, duplicateWindowSeconds, serverTime }` |
-| `POST /student/check-email` | — | `{ email, deviceId }` | `{ next: "create-password" \| "password", firstName }` · Hatalar: `404 NOT_FOUND`, `409 DEVICE_TAKEN` (bu telefon başka öğrenciye bağlı), `403 WRONG_DEVICE` (hesap başka telefona bağlı) |
-| `POST /student/set-password` | — | `{ email, password (≥8), deviceId, deviceSecret (64 hex), platform: "ios"\|"android"\|"web"\|"unknown" }` | `{ token, student: { id, firstName, lastName, className } }` · Hatalar: `409 ALREADY_HAS_PASSWORD`, `409 DEVICE_TAKEN`, `403 WRONG_DEVICE`, `404 NOT_FOUND` |
-| `POST /student/login` | — | `{ email, password, deviceId }` | `{ token, student }` · `401 BAD_CREDENTIALS`, `403 WRONG_DEVICE` |
+| `POST /student/check-phone` | — | `{ phone, deviceId }` | `{ next: "create-password" \| "password", firstName }` · Hatalar: `404 NOT_FOUND`, `409 DEVICE_TAKEN` (bu telefon başka öğrenciye bağlı), `403 WRONG_DEVICE` (hesap başka telefona bağlı) |
+| `POST /student/set-password` | — | `{ phone, password (≥8), deviceId, deviceSecret (64 hex), platform: "ios"\|"android"\|"web"\|"unknown" }` | `{ token, student: { id, firstName, lastName, className } }` · Hatalar: `409 ALREADY_HAS_PASSWORD`, `409 DEVICE_TAKEN`, `403 WRONG_DEVICE`, `404 NOT_FOUND` |
+| `POST /student/login` | — | `{ phone, password, deviceId }` | `{ token, student }` · `401 BAD_CREDENTIALS`, `403 WRONG_DEVICE` |
 | `GET /student/me` | öğrenci | — | `{ student: {…, presenceStatus: "IN"\|"OUT"}, needsDirection: boolean, nextDirection: "IN"\|"OUT"\|null, events: [{ id, direction, occurredAt, kioskName }] }` (son 10) · `401 DEVICE_REVOKED` |
 | `POST /scan` | öğrenci | `{ qr, ble: { token, rssi } \| null, timestamp, signature, direction?: "IN"\|"OUT"\|null }` | `{ eventId, direction, occurredAt, time: "HH:mm", duplicate, studentName, bleVerified: boolean\|null }` · Red: `422 { code: <RejectReason> }` |
 | `POST /admin/login` | — | `{ email, password }` | `{ token, admin: { id, fullName } }` — ADMIN veya KIOSK rolü |
@@ -255,8 +258,8 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 ## 6. İş kuralları (sunucu uygular; istemciye güvenilmez)
 
 **Hesap ve cihaz**
-- Kayıt ol yoktur. Yalnızca panelde tanımlı, aktif öğrenci e-postaları giriş yapabilir.
-- İlk giriş: e-posta → şifre oluştur (en az 8 karakter). Bu anda telefon (`deviceId` + `deviceSecret`) hesaba **bağlanır**.
+- Kayıt ol yoktur. Yalnızca panelde tanımlı, aktif öğrencilerin telefon numaraları giriş yapabilir.
+- İlk giriş: telefon numarası → şifre oluştur (en az 8 karakter). Bu anda telefon (`deviceId` + `deviceSecret`) hesaba **bağlanır**.
 - **Bir öğrenci = bir aktif cihaz; bir cihaz = bir öğrenci.** Veritabanında kısmi tekil indeksle de korunur.
 - Telefon-hesap bağlantısının **tek kaynağı sunucudur**; istemci yerel olarak "bu telefon başka hesaba bağlı" kararı vermez.
 - Şifre sıfırlama yalnızca panelden: **Şifreyi sıfırla** (cihaz bağlı kalır) / **Cihazı sıfırla** (cihaz iptal + şifre silinir; yeni telefonda baştan).
@@ -289,7 +292,6 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 
 - **Hiçbir gizli bilgi depoya girmez**: `.env`, `.env.local`, `infra/dev-db/.env`, veritabanı adresi+şifresi, anahtarlar, gerçek şifreler. Şablonlar `*.env.example` olarak, boş değerlerle tutulur. Veritabanı şifresi sohbete/issue'ya/ekran görüntüsüne de yazılmaz.
 - Kod, betik veya belgelere gerçek/örnek şifre yazmayın; komut satırı argümanı olarak şifre vermeyin (kabuk geçmişine girer). Gizli değerler ortam değişkeninden veya gizli girişle alınır.
-- Geliştirme tohum verisi (`seed.ts`) yalnızca yerel test içindir; üretimde (`NODE_ENV=production`) çalışmaz.
 - Kiosk gizli anahtarı (`kiosks.secret`) ve cihaz anahtarı (`devices.device_secret`) API yanıtlarında yalnızca belgelenen yerlerde döner; loglara yazılmaz.
 - Veritabanı portu internete açılmaz. Canlıda yalnızca HTTPS.
 - Kullanıcıya dönen hata mesajları Türkçe ve kısa; iç hata ayrıntısı (stack, SQL) istemciye dönmez.
@@ -299,10 +301,10 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 - Herkes **aynı** veritabanına bağlıdır: yaptığınız her yazma işlemini ekibin geri kalanı da görür.
 - Ekip kullanıcısı (`izmirfen_app`) yalnızca `SELECT/INSERT/UPDATE/DELETE` yapabilir; tablo oluşturamaz, silemez, `TRUNCATE` yapamaz. Bu bilinçli bir kısıttır.
 - **Şema değişikliği**: `AdminPanel/db/schema.sql`'e (ve `types.ts`, `repo.ts`'e) PR olarak eklenir; birleştirildikten sonra **proje sahibi** uygular (`infra/dev-db/kur.sh` veya `npm run db:setup` + `DATABASE_OWNER_URL`). Uygulanana kadar yeni kolonu kullanan kod `main`'e girmez.
-- Başkasının kayıtlarını silmeyin/değiştirmeyin. Test verisi oluştururken kendinize ait, tanınır kayıtlar kullanın (ör. e-posta `test+<adınız>-<rastgele>@izmirfen.test`, kiosk adı `TEST <adınız>`) ve testin sonunda temizleyin.
+- Başkasının kayıtlarını silmeyin/değiştirmeyin. Test verisi oluştururken kendinize ait, tanınır kayıtlar kullanın (ör. öğrenci adı `TEST <adınız>`, telefon `0500 000 XX XX` aralığı, e-posta `test+<adınız>-<rastgele>@izmirfen.test`, kiosk adı `TEST <adınız>`) ve testin sonunda temizleyin.
 - `DELETE`/`UPDATE` sorgularını **her zaman `WHERE`** ile yazın; elle SQL çalıştırmadan önce `SELECT` ile etkilenecek satırları görün.
 - Geliştirici başına bağlantı havuzu küçük tutulur (`DATABASE_POOL_MAX=3`); kullanmadığınız `npm run dev` süreçlerini kapatın.
-- Örnek veri (`seed.ts`) yalnızca veritabanı boşken bir kez eklenir; gerçek kişi verisi asla eklenmez.
+- Geliştirme veritabanına gerçek kişi verisi eklenmez.
 
 ## 8. Ortak çalışma kuralları
 
@@ -324,7 +326,7 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 
 **Okunabilir yazın**
 - Bir dosya = bir sorumluluk. Route, Server Action ve ekranlar ince; iş kuralı `lib/` içinde.
-- Açıklayıcı İngilizce adlar (`findStudentByEmail`, `createEventWithWhatsApp`); kısaltma yok (`stu`, `tmp`, `x` yalnızca çok kısa kapsamlarda).
+- Açıklayıcı İngilizce adlar (`findStudentByPhone`, `createEventWithWhatsApp`); kısaltma yok (`stu`, `tmp`, `x` yalnızca çok kısa kapsamlarda).
 - Kısa fonksiyonlar, erken dönüş (`if (!x) return …`), en fazla 2–3 iç içe blok. Uzun koşulları adlandırılmış değişkenlere bölün.
 - Her dosyanın başında amacını anlatan 1–2 satırlık Türkçe yorum. Yorumlar **neden**'i anlatır, kodun ne yaptığını tekrar etmez.
 - TypeScript strict: `any` yok (zorunluysa nedenini yorumla), `!` (non-null) yalnızca garanti varsa, API ve veritabanı tipleri `types.ts` / `api.ts`'ten.

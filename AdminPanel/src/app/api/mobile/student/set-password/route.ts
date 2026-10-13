@@ -2,10 +2,11 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { ApiError, body, clientIp, handler, ok, rateLimit } from "@/lib/api";
 import { signToken } from "@/lib/auth";
-import { addAudit, BindError, findStudentByEmail, setFirstPasswordAndBindDevice } from "@/lib/db/repo";
+import { addAudit, BindError, findStudentByPhone, setFirstPasswordAndBindDevice } from "@/lib/db/repo";
+import { phoneField } from "@/lib/phone";
 
 const schema = z.object({
-  email: z.string().trim().min(3).max(200),
+  phone: phoneField,
   password: z.string().min(8, "Şifre en az 8 karakter olmalı.").max(100),
   deviceId: z.string().min(8).max(100),
   deviceSecret: z.string().regex(/^[0-9a-f]{64}$/),
@@ -18,11 +19,11 @@ const STATUS: Record<BindError["code"], number> = { NOT_FOUND: 404, ALREADY_HAS_
 // Yönetici "Şifreyi sıfırla" yaptıysa öğrenci aynı telefonda yeniden şifre oluşturur.
 export const POST = handler(async (req: Request) => {
   const input = await body(req, schema);
-  rateLimit(`setpw:${input.email.toLowerCase()}`, 8);
+  rateLimit(`setpw:${input.phone}`, 8);
   rateLimit(`setpw-ip:${clientIp(req)}`, 30);
 
-  const student = await findStudentByEmail(input.email);
-  if (!student || !student.isActive) throw new ApiError(404, "Bu e-posta adresi okul kayıtlarında bulunamadı.", "NOT_FOUND");
+  const student = await findStudentByPhone(input.phone);
+  if (!student || !student.isActive) throw new ApiError(404, "Bu telefon numarası okul kayıtlarında bulunamadı.", "NOT_FOUND");
 
   try {
     await setFirstPasswordAndBindDevice({

@@ -1,0 +1,48 @@
+# Canlı sunucu: AdminPanel + Caddy (otomatik HTTPS). Veritabanı AYNI Lightsail sunucusundaki infra/dev-db konteyneridir
+# (proje sahibinin kararı; ayrı canlı veritabanı yok). AdminPanel o konteynerin Docker ağına katılır, veritabanına "db" adıyla bağlanır.
+# Kullanım (sunucuda, AdminPanel/deploy klasöründe):  docker compose up -d --build
+# Ayarlar .env dosyasından okunur (şablon: .env.example). Rehber: CANLIYA_ALMA.md (depo kökü)
+name: izmirfen
+
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?deploy/.env içinde DATABASE_URL tanımlayın}
+      # Veritabanı yalnızca SSL bağlantı kabul eder (infra/dev-db/pg_hba.conf); sertifika kendinden imzalı.
+      DATABASE_SSL: "true"
+      DATABASE_SSL_REJECT_UNAUTHORIZED: "false"
+      DATABASE_POOL_MAX: "5"
+      AUTH_SECRET: ${AUTH_SECRET:?deploy/.env içinde AUTH_SECRET tanımlayın}
+      COOKIE_SECURE: "true"
+      BLE_REQUIRED: ${BLE_REQUIRED:-false}
+      DUPLICATE_WINDOW_SECONDS: ${DUPLICATE_WINDOW_SECONDS:-120}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-mock}
+      SCHOOL_SHORT_NAME: ${SCHOOL_SHORT_NAME:-Izmir Fen}
+      NODE_OPTIONS: --max-old-space-size=256
+    networks: [default, devdb]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?deploy/.env içinde DOMAIN tanımlayın}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+networks:
+  # infra/dev-db/docker-compose.yml'in ağı (proje adı izmirfen-devdb). Önce veritabanı çalışıyor olmalı (kur.sh).
+  devdb:
+    external: true
+    name: izmirfen-devdb_default
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -8,10 +8,14 @@ import pg from "pg";
 const API = `${process.env.API_URL ?? "http://localhost:3000"}/api/mobile`;
 const suffix = randomBytes(4).toString("hex");
 const hex = (n) => randomBytes(n).toString("hex");
+// Test numaraları 0500 000 XX XX aralığından (gerçek operatörlere ayrılmamış); saklanan biçim +905XXXXXXXXX.
+const testPhone = () => `+905000${String(randomBytes(3).readUIntBE(0, 3) % 1e6).padStart(6, "0")}`;
+// "+905000123456" → "0500 012 34 56": uygulamaya yazılabilecek yerel biçim.
+const localFormat = (phone) => `0${phone.slice(3, 6)} ${phone.slice(6, 9)} ${phone.slice(9, 11)} ${phone.slice(11)}`;
 
 // Testin oluşturduğu kayıtlar — temizlik yalnızca bu kimlikleri siler.
-const student = { id: `stu_${hex(8)}`, email: `test+e2e-${suffix}@izmirfen.test`, firstName: "E2E", lastName: `Test ${suffix}` };
-const otherStudent = { id: `stu_${hex(8)}`, email: `test+e2e-${suffix}-b@izmirfen.test` };
+const student = { id: `stu_${hex(8)}`, phone: testPhone(), firstName: "E2E", lastName: `Test ${suffix}` };
+const otherStudent = { id: `stu_${hex(8)}`, phone: testPhone() };
 const guardianId = `gua_${hex(8)}`;
 const kiosk = { id: `kiosk_${hex(8)}`, name: `TEST e2e-${suffix}` };
 const kioskAccount = { id: `adm_${hex(8)}`, email: `test+e2e-${suffix}-kiosk@izmirfen.test`, password: hex(12) };
@@ -43,9 +47,9 @@ async function call(method, path, payload, token) {
 
 async function createTestData() {
   await db.query(
-    `INSERT INTO students (id, school_no, first_name, last_name, email, class_name) VALUES
+    `INSERT INTO students (id, school_no, first_name, last_name, phone, class_name) VALUES
        ($1, 'E2E-1', $2, $3, $4, 'E2E'), ($5, 'E2E-2', 'E2E', $6, $7, 'E2E')`,
-    [student.id, student.firstName, student.lastName, student.email, otherStudent.id, `Test ${suffix} B`, otherStudent.email],
+    [student.id, student.firstName, student.lastName, student.phone, otherStudent.id, `Test ${suffix} B`, otherStudent.phone],
   );
   await db.query("INSERT INTO guardians (id, full_name, phone) VALUES ($1, 'E2E Veli', '+900000000000')", [guardianId]);
   await db.query("INSERT INTO student_guardians (student_id, guardian_id) VALUES ($1, $2)", [student.id, guardianId]);
@@ -91,14 +95,16 @@ async function run() {
     cfg,
   );
 
-  // ---- e-posta kontrolü
-  let r = await call("POST", "/student/check-email", { email: student.email.toUpperCase(), deviceId: device.id });
-  check("check-email: yeni öğrenci → create-password (büyük/küçük harf duyarsız)", r.status === 200 && r.data.next === "create-password" && r.data.firstName === student.firstName, r);
-  r = await call("POST", "/student/check-email", { email: `yok-${suffix}@izmirfen.test`, deviceId: device.id });
-  check("check-email: bilinmeyen e-posta → 404 NOT_FOUND", r.status === 404 && r.data.code === "NOT_FOUND", r);
+  // ---- telefon numarası kontrolü
+  let r = await call("POST", "/student/check-phone", { phone: localFormat(student.phone), deviceId: device.id });
+  check("check-phone: yeni öğrenci → create-password (0XXX XXX XX XX biçimi de kabul)", r.status === 200 && r.data.next === "create-password" && r.data.firstName === student.firstName, r);
+  r = await call("POST", "/student/check-phone", { phone: "12345", deviceId: device.id });
+  check("check-phone: geçersiz numara → 400 VALIDATION", r.status === 400 && r.data.code === "VALIDATION", r);
+  r = await call("POST", "/student/check-phone", { phone: testPhone(), deviceId: device.id });
+  check("check-phone: kayıtlı olmayan numara → 404 NOT_FOUND", r.status === 404 && r.data.code === "NOT_FOUND", r);
 
   // ---- şifre oluşturma + cihaz bağlama
-  const setPassword = { email: student.email, password: studentPassword, deviceId: device.id, deviceSecret: device.secret, platform: "ios" };
+  const setPassword = { phone: student.phone, password: studentPassword, deviceId: device.id, deviceSecret: device.secret, platform: "ios" };
   r = await call("POST", "/student/set-password", { ...setPassword, password: "kisa" });
   check("set-password: kısa şifre → 400 VALIDATION", r.status === 400 && r.data.code === "VALIDATION", r);
   r = await call("POST", "/student/set-password", setPassword);
@@ -110,24 +116,24 @@ async function run() {
   check("set-password: ikinci kez → 409 ALREADY_HAS_PASSWORD", r.status === 409 && r.data.code === "ALREADY_HAS_PASSWORD", r);
 
   // ---- cihaz kuralları
-  r = await call("POST", "/student/check-email", { email: student.email, deviceId: device.id });
-  check("check-email: şifre var → password", r.status === 200 && r.data.next === "password", r);
-  r = await call("POST", "/student/check-email", { email: student.email, deviceId: secondDeviceId });
-  check("check-email: ikinci telefon → 403 WRONG_DEVICE", r.status === 403 && r.data.code === "WRONG_DEVICE", r);
-  r = await call("POST", "/student/check-email", { email: otherStudent.email, deviceId: device.id });
-  check("check-email: aynı telefona ikinci öğrenci → 409 DEVICE_TAKEN", r.status === 409 && r.data.code === "DEVICE_TAKEN", r);
-  r = await call("POST", "/student/set-password", { ...setPassword, email: otherStudent.email });
+  r = await call("POST", "/student/check-phone", { phone: student.phone, deviceId: device.id });
+  check("check-phone: şifre var → password", r.status === 200 && r.data.next === "password", r);
+  r = await call("POST", "/student/check-phone", { phone: student.phone, deviceId: secondDeviceId });
+  check("check-phone: ikinci telefon → 403 WRONG_DEVICE", r.status === 403 && r.data.code === "WRONG_DEVICE", r);
+  r = await call("POST", "/student/check-phone", { phone: otherStudent.phone, deviceId: device.id });
+  check("check-phone: aynı telefona ikinci öğrenci → 409 DEVICE_TAKEN", r.status === 409 && r.data.code === "DEVICE_TAKEN", r);
+  r = await call("POST", "/student/set-password", { ...setPassword, phone: otherStudent.phone });
   check("set-password: aynı telefona ikinci öğrenci → 409 DEVICE_TAKEN", r.status === 409 && r.data.code === "DEVICE_TAKEN", r);
 
   // ---- öğrenci girişi
-  r = await call("POST", "/student/login", { email: student.email, password: studentPassword, deviceId: device.id });
+  r = await call("POST", "/student/login", { phone: student.phone, password: studentPassword, deviceId: device.id });
   check("login: doğru şifre → token", r.status === 200 && typeof r.data.token === "string" && r.data.student?.className === "E2E", r);
   if (r.data?.token) studentToken = r.data.token;
-  r = await call("POST", "/student/login", { email: student.email, password: `${studentPassword}x`, deviceId: device.id });
+  r = await call("POST", "/student/login", { phone: student.phone, password: `${studentPassword}x`, deviceId: device.id });
   check("login: yanlış şifre → 401 BAD_CREDENTIALS", r.status === 401 && r.data.code === "BAD_CREDENTIALS", r);
-  r = await call("POST", "/student/login", { email: otherStudent.email, password: studentPassword, deviceId: secondDeviceId });
+  r = await call("POST", "/student/login", { phone: otherStudent.phone, password: studentPassword, deviceId: secondDeviceId });
   check("login: şifresi olmayan öğrenci → 401 BAD_CREDENTIALS", r.status === 401 && r.data.code === "BAD_CREDENTIALS", r);
-  r = await call("POST", "/student/login", { email: student.email, password: studentPassword, deviceId: secondDeviceId });
+  r = await call("POST", "/student/login", { phone: student.phone, password: studentPassword, deviceId: secondDeviceId });
   check("login: başka telefon → 403 WRONG_DEVICE", r.status === 403 && r.data.code === "WRONG_DEVICE", r);
 
   // ---- öğrenci bilgisi

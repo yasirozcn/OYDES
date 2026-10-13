@@ -28,8 +28,9 @@ export type StudentRow = Student & {
   activeDevice: Device | null;
 };
 
-export async function findStudentByEmail(email: string): Promise<Student | null> {
-  return first(await q<Student>("SELECT * FROM students WHERE lower(email) = lower($1)", [email.trim()]));
+/** `phone` normalizePhone ile +905XXXXXXXXX biçimine çevrilmiş olmalı. */
+export async function findStudentByPhone(phone: string): Promise<Student | null> {
+  return first(await q<Student>("SELECT * FROM students WHERE phone = $1", [phone]));
 }
 
 export async function getStudent(id: string): Promise<Student | null> {
@@ -57,21 +58,23 @@ export async function createStudent(input: {
   schoolNo: string;
   firstName: string;
   lastName: string;
-  email: string;
+  /** normalizePhone ile +905XXXXXXXXX biçiminde. */
+  phone: string;
+  email: string | null;
   className: string;
   guardianName: string;
   guardianPhone: string;
 }): Promise<Student> {
   return tx(async (c) => {
-    const email = input.email.trim().toLowerCase();
-    const dup = await c.query("SELECT 1 FROM students WHERE lower(email) = $1", [email]);
-    if (dup.rows.length) throw new Error("Bu e-posta ile kayıtlı bir öğrenci var.");
+    const dup = await c.query("SELECT 1 FROM students WHERE phone = $1", [input.phone]);
+    if (dup.rows.length) throw new Error("Bu telefon numarası ile kayıtlı bir öğrenci var.");
     const student: Student = {
       id: newId("stu"),
       schoolNo: input.schoolNo.trim(),
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),
-      email,
+      email: input.email?.trim().toLowerCase() || null,
+      phone: input.phone,
       className: input.className.trim(),
       passwordHash: null,
       presenceStatus: "OUT",

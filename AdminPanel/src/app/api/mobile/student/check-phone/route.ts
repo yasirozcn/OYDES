@@ -1,16 +1,17 @@
 import { z } from "zod";
 import { ApiError, body, clientIp, handler, ok, rateLimit } from "@/lib/api";
-import { findStudentByEmail, getActiveDevice, getActiveDeviceForStudent } from "@/lib/db/repo";
+import { findStudentByPhone, getActiveDevice, getActiveDeviceForStudent } from "@/lib/db/repo";
+import { phoneField } from "@/lib/phone";
 
-const schema = z.object({ email: z.string().trim().min(3).max(200), deviceId: z.string().min(8).max(100) });
+const schema = z.object({ phone: phoneField, deviceId: z.string().min(8).max(100) });
 
-// Öğrenci e-postasını girer. Yalnızca okul veritabanındaki e-postalar devam edebilir.
+// Öğrenci telefon numarasını girer. Yalnızca okul veritabanındaki numaralar devam edebilir.
 // Yanıt: şifre henüz yoksa "create-password", varsa "password".
 export const POST = handler(async (req: Request) => {
   rateLimit(`check:${clientIp(req)}`, 30);
-  const { email, deviceId } = await body(req, schema);
-  const student = await findStudentByEmail(email);
-  if (!student || !student.isActive) throw new ApiError(404, "Bu e-posta adresi okul kayıtlarında bulunamadı.", "NOT_FOUND");
+  const { phone, deviceId } = await body(req, schema);
+  const student = await findStudentByPhone(phone);
+  if (!student || !student.isActive) throw new ApiError(404, "Bu telefon numarası okul kayıtlarında bulunamadı.", "NOT_FOUND");
 
   const device = await getActiveDevice(deviceId);
   if (device && device.studentId !== student.id)
