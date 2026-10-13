@@ -1,14 +1,17 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SessionProvider } from "@/lib/session";
 
-// Kök düzen: tüm ekranlar bu Stack içinde açılır.
-// Oturum (SessionProvider) ve Bluetooth kapısı (BluetoothGate) geliştirildiğinde buraya eklenir — bkz. AGENTS.md §2–§3.
+// Kök düzen: tüm ekranlar oturum (SessionProvider) içindeki bu Stack'te açılır.
+// Bluetooth uyarısı (BluetoothGate) geliştirildiğinde Stack'ten sonra eklenir — bkz. AGENTS.md §4.3.
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />
+      <SessionProvider>
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />
+      </SessionProvider>
     </SafeAreaProvider>
   );
 }
