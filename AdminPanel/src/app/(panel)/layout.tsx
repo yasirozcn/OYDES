@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { requireWebAdmin } from "@/lib/session";
+import { logoutAction } from "../login/actions";
 import { NavLinks } from "./NavLinks";
 
-// GEÇİCİ (BE-1): sabit yönetici. BE-1'de yerine `const admin = await requireWebAdmin();` (`@/lib/session`) gelir ve fonksiyon async olur.
-const admin = { fullName: "Okul Yöneticisi", email: "admin@fenbahceleri.test" };
-
-export default function PanelLayout({ children }: { children: React.ReactNode }) {
+export default async function PanelLayout({ children }: { children: React.ReactNode }) {
+  const admin = await requireWebAdmin();
   const initials = admin.fullName
     .split(" ")
     .filter(Boolean)
@@ -33,10 +33,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <div className="truncate text-xs text-slate-500">{admin.email}</div>
             </div>
           </div>
-          {/* GEÇİCİ (BE-1): yerine <form action={logoutAction}><button className="btn btn-secondary w-full">Çıkış yap</button></form> gelir. */}
-          <Link href="/login" className="btn btn-secondary mt-3 w-full">
-            Çıkış yap
-          </Link>
+          <form action={logoutAction}>
+            <button className="btn btn-secondary mt-3 w-full">Çıkış yap</button>
+          </form>
         </div>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-6 md:px-9 md:pt-7 md:pb-12">{children}</main>

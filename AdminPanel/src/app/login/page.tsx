@@ -1,7 +1,9 @@
+import { redirect } from "next/navigation";
+import { getWebAdmin } from "@/lib/session";
 import { LoginForm } from "./LoginForm";
 
-// GEÇİCİ (BE-1): oturum kontrolü yok. BE-1'de başa `if (await getWebAdmin()) redirect("/");` eklenir (`@/lib/session`).
-export default function LoginPage() {
+export default async function LoginPage() {
+  if (await getWebAdmin()) redirect("/");
   return (
     <main className="flex min-h-screen flex-wrap">
       <section className="hidden flex-[1_1_480px] flex-col gap-8 bg-[#14211A] p-14 text-white lg:flex">
