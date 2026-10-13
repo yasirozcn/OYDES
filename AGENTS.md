@@ -74,6 +74,8 @@ Bu yapılara **dokunmadan** eklenen özellikler (yeni panel sayfası, yeni ekran
 | Şemayı uygulayan | `DATABASE_URL` | yalnızca proje sahibi, `DATABASE_OWNER_URL` (hazır) |
 | Örnek uç nokta | yok | `/api/health` + `dbHealth()` (hazır, kalır) |
 | `AUTH_SECRET` üretimde yoksa | `config.ts` uyarı yazar, devam eder | `auth.ts` **hata fırlatır** (§5.1) |
+| Panel sayfalarında oturum kontrolü | yalnızca `(panel)/layout.tsx` | layout **ve** her `(panel)/**/page.tsx` `requireWebAdmin()` çağırır (layout istemci içi gezinmede çalışmaz); `getWebAdmin` React `cache()` ile |
+| `handler()` beklenmeyen hata (500) | hatanın mesajını döner | her zaman "Beklenmeyen hata."; ayrıntı yalnızca sunucu logunda (`[api]`) |
 | `RejectReason` tipi | `WRONG_STATE` içerir | `WRONG_STATE` **yok** → `REJECT_MESSAGES`'a da eklenmez (yoksa tip hatası) |
 | Uçtan uca test (`scripts/e2e-test.mjs`) | Örnek öğrenci `ali.yilmaz@…` ve kiosk şifresini kullanır | **Kendi verisini oluşturur ve siler** (ortak veritabanı, §7.1) |
 | `Dockerfile` | `pnpm` + `pnpm-lock.yaml` | `npm ci` + `package-lock.json` |
@@ -234,7 +236,7 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 
 ### 5.1 Kimlik doğrulama ve `AUTH_SECRET`
 
-**Durum:** Kimlik doğrulama henüz geliştirilmedi; şu an hiçbir kod `AUTH_SECRET` okumaz, `.env.local`'de boş kalabilir.
+**Durum:** BE-1 ile geliştirildi (`config.ts`, `auth.ts`, `session.ts`). Geliştirmede `AUTH_SECRET` boşsa sabit geliştirme anahtarı kullanılır; yine de herkes kendi anahtarını `.env.local`'e yazar.
 
 **Ne işe yarar:** Sunucunun verdiği tüm "giriş kartlarını" (JWT, HS256) imzalar ve doğrular — öğrenci token'ı (30 gün), kiosk token'ı (180 gün), panel çerezi `fb_admin` (12 saat). Bu anahtarı bilen herkes, şifre bilmeden herhangi bir öğrenci/yönetici adına geçerli token üretebilir.
 
@@ -345,7 +347,7 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 ```bash
 # 1) AdminPanel — ortak veritabanına bağlanma (Docker gerekmez)
 cd AdminPanel && npm install
-cp .env.example .env.local                  # DATABASE_URL'yi proje sahibinin verdiği adresle doldurun (AUTH_SECRET auth geliştirilince, §5.1)
+cp .env.example .env.local                  # DATABASE_URL'yi proje sahibinin verdiği adresle doldurun ve kendi AUTH_SECRET'inizi üretin (§5.1)
 npm run db:check                            # "Bağlandı … SSL: açık" ve 11 tablo görmelisiniz
 npm run dev                                 # http://localhost:3000 → "Ortak veritabanına bağlı"; http://localhost:3000/api/health → JSON
 

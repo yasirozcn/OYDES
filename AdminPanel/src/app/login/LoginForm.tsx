@@ -1,15 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useActionState } from "react";
+import { loginAction } from "./actions";
 
 export function LoginForm() {
-  const router = useRouter();
-  // GEÇİCİ (BE-1): sunucuya gitmeden panele geçer. BE-1'de bu fonksiyon ve router silinir, yerine `import { loginAction } from "./actions";` gelir.
-  async function loginAction(): Promise<{ error: string }> {
-    router.push("/");
-    return { error: "" };
-  }
   const [state, action, pending] = useActionState(loginAction, { error: "" });
   return (
     <form action={action} className="space-y-5">

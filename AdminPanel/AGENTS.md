@@ -180,7 +180,7 @@ export async function deleteKiosk(id: string): Promise<boolean> {
 
 Oturum: `/login` (Server Action, bcrypt). Yalnızca `role = ADMIN` girer; KIOSK hesabı panele giremez. Oturum 12 saat, `fb_admin` httpOnly çerezi.
 Her yönetici işlemi Server Action ile yapılır, **önce** `requireWebAdmin()` çağrılır, işlemden sonra `addAudit(...)` yazılır ve `revalidatePath(...)` çağrılır.
-Sayfalar sunucu bileşenidir, veriyi doğrudan repo'dan okur ve `export const dynamic = "force-dynamic";` içerir. `"use client"` yalnızca form durumu (`useActionState`), `usePathname`, `confirm()` ve otomatik yenileme için.
+Sayfalar sunucu bileşenidir, veriyi doğrudan repo'dan okur ve `export const dynamic = "force-dynamic";` içerir. Her panel sayfası veriyi okumadan önce `await requireWebAdmin();` çağırır: layout istemci içi gezinmede yeniden çalışmaz, tek başına yetki kontrolü sayılmaz (`node_modules/next/dist/docs/01-app/02-guides/authentication.md` → "Layouts and auth checks"; kök AGENTS.md §0.2). `"use client"` yalnızca form durumu (`useActionState`), `usePathname`, `confirm()` ve otomatik yenileme için.
 
 ### 4.1 Sayfalar
 
@@ -238,7 +238,7 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | --- | --- | --- |
 | `body()` | 400 `BAD_JSON` | İstek gövdesi JSON olmalı. |
 | `handler()` zod | 400 `VALIDATION` | Geçersiz istek. (+ `issues`) |
-| `handler()` diğer | 500 `ERROR` | hatanın mesajı veya "Beklenmeyen hata." |
+| `handler()` diğer | 500 `ERROR` | Beklenmeyen hata. (iç hata mesajı istemciye dönmez, `[api]` ile loglanır) |
 | `requireStudent` | 401 `UNAUTHORIZED` | Oturum süresi doldu. Tekrar giriş yapın. |
 | `requireKioskAdmin` | 401 `UNAUTHORIZED` | Yönetici oturumu gerekli. |
 | `rateLimit` | 429 `RATE_LIMIT` | Çok fazla deneme yapıldı. Birkaç dakika sonra tekrar deneyin. |
@@ -275,7 +275,7 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | `DATABASE_POOL_MAX` | `3` |
 | `SEED_SAMPLE_DATA` | Boş veritabanına örnek veri (geliştirmede açık, canlıda kapalı) |
 | `DATABASE_OWNER_URL` | **Yalnızca proje sahibi** — ekipte boş |
-| `AUTH_SECRET` | JWT anahtarı. Kimlik doğrulama (giriş kartları) yazıldığından itibaren gerekir. Herkes kendisi üretir (`openssl rand -hex 32`), paylaşılmaz; canlıda zorunlu (kök AGENTS.md §5.1) |
+| `AUTH_SECRET` | JWT anahtarı. Boşsa geliştirmede sabit anahtar kullanılır. Herkes kendisi üretir (`openssl rand -hex 32`), paylaşılmaz; canlıda zorunlu (kök AGENTS.md §5.1) |
 | `BLE_REQUIRED` | `true`: BLE jetonu zorunlu (varsayılan `false`) |
 | `DUPLICATE_WINDOW_SECONDS` | Çift okutma penceresi (varsayılan 120) |
 | `WHATSAPP_PROVIDER` | `mock` |

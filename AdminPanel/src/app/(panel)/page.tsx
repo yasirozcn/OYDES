@@ -2,15 +2,13 @@ import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { DirectionBadge, ReviewBadge, SourceBadge } from "@/components/Badges";
 import { dashboardStats, listEvents } from "@/lib/db/repo";
+import { requireWebAdmin } from "@/lib/session";
+import { formatDateTime } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
-// GEÇİCİ (BE-1): BE-1'de bu fonksiyon silinir, yerine `import { formatDateTime } from "@/lib/whatsapp";` gelir.
-function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "medium", timeZone: "Europe/Istanbul" }).format(new Date(iso));
-}
-
 export default async function DashboardPage() {
+  await requireWebAdmin();
   const [stats, events] = await Promise.all([dashboardStats(), listEvents({ limit: 15 })]);
 
   const tiles = [

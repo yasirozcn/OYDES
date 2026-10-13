@@ -25,7 +25,7 @@ Veritabanı **kimsenin bilgisayarında değildir**. Herkes AWS'deki **ortak geli
    ```bash
    cd AdminPanel
    npm install
-   cp .env.example .env.local      # yalnızca DATABASE_URL'yi doldurun (AUTH_SECRET şimdilik boş kalır)
+   cp .env.example .env.local      # DATABASE_URL'yi doldurun; AUTH_SECRET için kendi anahtarınızı üretin: openssl rand -hex 32 (AGENTS.md §5.1)
    npm run db:check
    ```
    Beklenen çıktı:
