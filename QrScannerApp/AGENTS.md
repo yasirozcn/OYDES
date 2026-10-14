@@ -108,6 +108,7 @@ QrScannerApp/
         ├── device.ts ⏳              getDeviceIdentity, clearBinding, tokens
         ├── session.tsx ⏳            SessionProvider, useSession
         ├── protocol.ts ⏳            PROTOCOL_VERSION, slotAt, buildQrPayload, isOurQr, bleToken, requestSignature, __test
+        ├── dummy.ts GEÇİCİ           sunucuda henüz olmayan uç noktaların örnek yanıtları (kök AGENTS.md §0.4); api.ts'te tek __DEV__ satırıyla kullanılır, BE-2/BE-3 bitince SİLİNİR
         └── ble.ts ⏳                 bleLog, getBleLog, clearBleLog, subscribeBleLog, isBleAvailable, subscribeBtState, openBluetoothSettings, extractKioskToken, startBleScan (+ tipler BtState, Found, BleStatus, BleLogEntry, SeenDevice)
 ```
 `ios/` ve `android/` klasörleri **üretilir** (git'e girmez); elle oluşturulmaz/düzenlenmez.

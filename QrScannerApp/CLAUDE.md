@@ -21,6 +21,7 @@ Telefonda denenmesi gereken adımları kullanıcıya **numaralı ve sade** yazı
 - Expo / React Native API'lerini hafızadan yazmayın: bu dosyanın başındaki Expo kurallarına uyun; referans kod Expo SDK 57 ile çalışır, şüphede referanstaki kullanımı örnek alın.
 - Paket eklemeyin (`npx expo install` dahil) — gereken her şey kurulu. Eksik görünüyorsa durup sorun.
 - Sunucuyla konuşma yalnızca `src/lib/api.ts` → `api<T>()` ile; `fetch` doğrudan ekranda kullanılmaz. Hata mesajı olarak sunucunun `e.message`'ı gösterilir.
+- Öğrenci girişi **cep telefonu + şifre**dir (`student-login.tsx`: `check-phone` → şifre oluştur | şifre; gövdelerde `phone`, biçimi sunucu çevirir). Öğrenci için e-posta alanı/metni eklemeyin; "Yönetici girişi (kiosk)" e-postayla kalır.
 - Gizli değerler (`deviceSecret`, token'lar, kiosk `secret`) loglanmaz, ekranda gösterilmez, AsyncStorage'a yazılmaz.
 - `protocol.ts` sunucudakiyle aynı kuralları uygular; değişiklik gerekiyorsa durup sorun (iki taraf birlikte değişir).
 - `react-native-ble-plx` yalnızca `src/lib/ble.ts` içinde, koşullu `require` ile yüklenir; `KioskBeacon` yalnızca `@modules/kiosk-beacon` üzerinden kullanılır.

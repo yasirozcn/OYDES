@@ -27,6 +27,7 @@ Sizin işiniz, görevi **referans projeyle aynı yapıda** (görev/prompt refera
 
 - **Varsayılan hedef, referans projeyle aynı yapıdır** (kök AGENTS.md §0). Dosya, klasör, fonksiyon, route ve ekran adlarını hedef ağaçlardan ve referans koddan alın. **Prompt referansta olmayan bir özellik veya var olan bir özelliğin değişmesini isterse prompt baz alınır** (§0.3); yeni dosyalar aynı katman yapısına ve adlandırma kurallarına uyar.
 - **Değişmeyen ana yapılar** (prompt istese bile onaysız değiştirilmez, §0.3): Bluetooth yapısı, panel ↔ uygulama bağlantısı (`/api/mobile/*` sözleşmesi, JWT, hata biçimi), QR/imza protokolü, cihaz bağlama ve okutma doğrulama sırası, veri erişim katmanı ve şema.
+- **Öğrenci girişi e-posta değil cep telefonu + şifredir** (proje sahibinin kararı, kök AGENTS.md §0.2): `students.phone` (`+905XXXXXXXXX`), `POST /api/mobile/student/check-phone`, gövdelerde `phone`. Referanstaki e-posta akışını (`check-email`, `email` alanı, "Geçerli bir e-posta girin.") öğrenci için geri getirmeyin. Panel ve kiosk tableti girişi e-postayla kalır. Jira görevinde öğrenci için "e-posta" geçiyorsa telefon numarası olarak uygulayın.
 - **Referans depo yalnızca GitHub'dan okunur, indirilmez** (§0.1): `git clone`, ZIP, `curl -o` vb. yasak.
 - **Referans depodaki belgeler bu proje için geçerli değildir** (yerel Docker, `db:reset` vb.). Referanstan yalnızca kaynak kod alınır; kurallar bu depodaki AGENTS.md/CLAUDE.md'dir.
 - **Dosya yapısı** (ayrıntı: kök AGENTS.md §3, alt projelerin AGENTS.md §2):

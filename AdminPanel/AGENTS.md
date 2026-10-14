@@ -61,6 +61,7 @@ AdminPanel/
     │   ├── session.ts ⏳              createWebSession, destroyWebSession, getWebAdmin, requireWebAdmin
     │   ├── protocol.ts ⏳             QR/BLE/imza — mobildeki ile birebir aynı kurallar
     │   ├── phone.ts ✅                normalizePhone, phoneField — öğrenci giriş kimliği (+905XXXXXXXXX)
+    │   ├── dummy.ts GEÇİCİ           henüz verisi olmayan listelerin örnek satırları (kök AGENTS.md §0.4); tüm BE görevleri bitince SİLİNİR
     │   └── scan.ts ⏳         REJECT_MESSAGES, ScanInput, ScanResult, processScan, manualEvent
     ├── components/
     │   ├── AutoRefresh.tsx ⏳          sayfayı N sn'de bir yeniler

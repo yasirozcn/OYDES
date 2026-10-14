@@ -61,6 +61,16 @@ Referans, **varsayılan** davranıştır; bağlayıcı olan, kullanıcının ver
 
 Bu yapılara **dokunmadan** eklenen özellikler (yeni panel sayfası, yeni ekran, mevcut uç noktaya geriye uyumlu yeni alan, yeni rapor, metin/tasarım değişikliği vb.) serbesttir ve prompt'a göre yapılır. Yeni bir mobil uç noktası gerekiyorsa `/api/mobile/` altında aynı kalıpla (handler + zod + ApiError) eklenir ve §5 tablosu güncellenir.
 
+### 0.4 Geçici (dummy) veri — FE/APP backend'i beklemez
+
+Panel (FE) ve uygulama (APP) görevleri, henüz yazılmamış backend parçasını beklemeden **geçici veriyle** yapılır; ilgili BE görevi bitince geçici kısım silinir.
+- İşaret: her geçici satır `// GEÇİCİ (BE-n): <ne kalkacak>` yorumunu taşır (`BE-n` = gerçeğe çevirecek görev). Kontrol: `grep -rn "GEÇİCİ (BE-" AdminPanel/src QrScannerApp/src`.
+- Biçim gerçeğin aynısıdır: aynı uç nokta yolu, alan adları, fonksiyon adı ve imzası (§5, `AdminPanel/AGENTS.md` §4.2). Gerçek gelince ekran değişmez, yalnızca geçici kısım silinir.
+- **Panel:** listeler hazır repo okuma fonksiyonlarından **gerçek** okunur. Henüz olmayan Server Action'lar son adlarıyla boş yazılır ve "Bu işlem henüz hazır değil (BE-n)." döner. Henüz verisi olmayan listelerin örnek satırları yalnızca `AdminPanel/src/lib/dummy.ts`'te durur; yalnızca geliştirmede (`NODE_ENV !== "production"`) ve gerçek liste boşken gösterilir.
+- **Uygulama:** ekranlar her zaman gerçek `api()` çağrısı yapar. Sunucuda henüz olmayan uç noktaların örnek yanıtları `QrScannerApp/src/lib/dummy.ts`'te durur ve yalnızca `lib/api.ts`'teki tek bir `__DEV__` kontrollü satırla döndürülür. Örnek kiosk §4 test anahtarını (`kiosk_ana`) kullanır.
+- Geçici veri veritabanına hiçbir şey yazmaz; adlar açıkça sahtedir ("Örnek Öğrenci"). Gizli bilgi içermez.
+- Canlıya çıkmadan önce arama boş dönmeli ve iki `dummy.ts` silinmiş olmalıdır.
+
 ### 0.2 Referanstan bilinçli farklar (uyarlama tablosu)
 
 | Konu | Referans (Fen Bahçeleri) | Bu proje (İzmir Fen) |
@@ -163,7 +173,7 @@ FenBahceleri_IzmırFen/
     ├── modules/kiosk-beacon/ ⏳            Android BLE yayın modülü (Kotlin) + iOS taslağı
     ├── tools/ ⏳                           mac-kiosk-beacon.swift · ios-kur.sh · android-apk.sh
     └── src/
-        ├── app/                           _layout ✅ · index ✅ (GEÇİCİ) · student-login ⏳ · student-home ⏳ · scan ⏳
+        ├── app/                           _layout ✅ · index ✅ · student-login ✅ (telefon) · student-home ✅ · scan ⏳
         │                                  admin-login ⏳ · kiosk-select ⏳ · kiosk/[id] ⏳ · ble-debug ⏳
         ├── components/ ⏳                  ui.tsx · icons.tsx · BluetoothGate.tsx
         └── lib/                           config ✅ · api ⏳ · session ⏳ · device ⏳ · protocol ⏳ · ble ⏳
