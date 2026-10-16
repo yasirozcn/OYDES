@@ -48,6 +48,26 @@ async function call(method, path, payload, token) {
   return { status: res.status, data: await res.json().catch(() => null) };
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Mobil uygulamanın okutma isteği: QR + kioskun BLE jetonu + cihaz anahtarıyla imza.
+function scan(token, slot, { qr = buildQrPayload(kiosk.secret, kiosk.id, slot), direction, deviceSecret = device.secret } = {}) {
+  const ble = { token: bleToken(kiosk.secret, kiosk.id, slot), rssi: -60 };
+  const timestamp = Date.now();
+  return call("POST", "/scan", { qr, ble, timestamp, signature: requestSignature(deviceSecret, qr, ble.token, timestamp), direction }, token);
+}
+
+// WhatsApp gönderimi arka planda: mesajlar QUEUED'dan çıkana kadar kısa süre bekler.
+async function eventMessages(eventId) {
+  let rows = [];
+  for (let i = 0; i < 20; i++) {
+    ({ rows } = await db.query("SELECT status, attempt_count, sent_at FROM wp_messages WHERE event_id = $1", [eventId]));
+    if (rows.length && rows.every((m) => m.status !== "QUEUED")) break;
+    await sleep(250);
+  }
+  return rows;
+}
+
 async function createTestData() {
   await db.query(
     `INSERT INTO students (id, school_no, first_name, last_name, phone, class_name) VALUES
@@ -218,6 +238,92 @@ async function run() {
   r = await call("POST", `/kiosks/kiosk_yok_${suffix}/start`, null, kioskToken);
   check("kiosks/start: olmayan kiosk → 404 NOT_FOUND", r.status === 404 && r.data.code === "NOT_FOUND", r);
 
+  // ---- okutma: redler (hepsi scan_attempts'a REJECTED yazılır)
+  const s0 = currentSlot();
+  r = await scan(studentToken, s0 - 3);
+  check("scan: eski QR → 422 EXPIRED_QR", r.status === 422 && r.data.code === "EXPIRED_QR" && r.data.error === "QR kodun süresi doldu. Ekrandaki güncel kodu okutun.", r);
+  r = await scan(studentToken, s0, { qr: `FB2.${kiosk.id}.${s0}.sahteimza` });
+  check("scan: sahte QR → 422 INVALID_QR", r.status === 422 && r.data.code === "INVALID_QR", r);
+  r = await scan(studentToken, s0, { qr: buildQrPayload(hex(32), disabledKiosk.id, s0) });
+  check("scan: devre dışı kiosk → 422 UNKNOWN_KIOSK", r.status === 422 && r.data.code === "UNKNOWN_KIOSK", r);
+  r = await scan(studentToken, s0, { deviceSecret: hex(32) });
+  check("scan: yanlış imza → 422 BAD_SIGNATURE", r.status === 422 && r.data.code === "BAD_SIGNATURE", r);
+  const rejected = await db.query("SELECT reject_reason FROM scan_attempts WHERE device_id = $1 AND result = 'REJECTED'", [device.id]);
+  const reasons = rejected.rows.map((a) => a.reject_reason);
+  check(
+    "scan: redler scan_attempts'ta REJECTED",
+    ["EXPIRED_QR", "INVALID_QR", "UNKNOWN_KIOSK", "BAD_SIGNATURE"].every((code) => reasons.includes(code)),
+    reasons,
+  );
+
+  // ---- okutma: ilk okutma yön ister (hiçbir tabloya yazılmaz), sonra IN
+  const countRows = async () =>
+    (
+      await db.query(
+        "SELECT (SELECT count(*) FROM scan_attempts WHERE device_id = $1)::int AS attempts, (SELECT count(*) FROM attendance_events WHERE student_id = $2)::int AS events",
+        [device.id, student.id],
+      )
+    ).rows[0];
+  const before = await countRows();
+  r = await scan(studentToken, s0);
+  const after = await countRows();
+  check("scan: ilk okutma, yön yok → 422 DIRECTION_REQUIRED", r.status === 422 && r.data.code === "DIRECTION_REQUIRED", r);
+  check("scan: DIRECTION_REQUIRED kaydedilmedi", after.attempts === before.attempts && after.events === 0, { before, after });
+
+  r = await scan(studentToken, s0, { direction: "IN" });
+  const inEvent = r.data;
+  check(
+    "scan: direction IN → giriş kaydı",
+    r.status === 200 &&
+      inEvent.direction === "IN" &&
+      inEvent.duplicate === false &&
+      inEvent.bleVerified === true &&
+      inEvent.studentName === `${student.firstName} ${student.lastName}` &&
+      typeof inEvent.eventId === "string" &&
+      typeof inEvent.occurredAt === "string" &&
+      /^\d{2}:\d{2}$/.test(inEvent.time),
+    r,
+  );
+  const presence = async () => (await db.query("SELECT presence_status FROM students WHERE id = $1", [student.id])).rows[0]?.presence_status;
+  check("scan: presence_status = IN", (await presence()) === "IN");
+  const stored = await db.query("SELECT source, kiosk_id, scan_attempt_id FROM attendance_events WHERE id = $1", [inEvent.eventId]);
+  check("scan: attendance_events source APP + kiosk + deneme", stored.rows[0]?.source === "APP" && stored.rows[0]?.kiosk_id === kiosk.id && stored.rows[0]?.scan_attempt_id != null, stored.rows[0]);
+  let msgs = await eventMessages(inEvent.eventId);
+  check("scan: veliye bir WhatsApp mesajı MOCK_SENT", msgs.length === 1 && msgs[0].status === "MOCK_SENT" && msgs[0].attempt_count === 1 && msgs[0].sent_at != null, msgs);
+
+  // ---- okutma: aynı QR tekrar → REPLAY
+  r = await scan(studentToken, s0, { direction: "IN" });
+  check("scan: aynı QR tekrar → 422 REPLAY", r.status === 422 && r.data.code === "REPLAY", r);
+  const replay = await db.query("SELECT 1 FROM scan_attempts WHERE device_id = $1 AND result = 'REJECTED' AND reject_reason = 'REPLAY'", [device.id]);
+  check("scan: REPLAY scan_attempts'ta REJECTED", replay.rowCount === 1, replay.rowCount);
+
+  // ---- okutma: pencere içinde yeni QR → çift okutma (yeni olay/mesaj yok), sonra pencere geçince yön otomatik OUT
+  // Kısa pencerede (ör. DUPLICATE_WINDOW_SECONDS=2) ortak veritabanının gecikmesi pencereyi aşar: çift okutma denenmez, pencere gerçekten beklenir.
+  // Uzun pencerede çift okutma denenir, sonra yalnızca kendi test olayımızın saati pencere kadar geri alınır.
+  const windowSeconds = Number(process.env.DUPLICATE_WINDOW_SECONDS || 120);
+  if (windowSeconds < 30) {
+    console.log(`  (pencere ${windowSeconds} sn: çift okutma kontrolü atlandı, pencere bekleniyor)`);
+    await sleep((windowSeconds + 1) * 1000);
+  } else {
+    r = await scan(studentToken, s0 + 1);
+    const messageCount = async () => (await db.query("SELECT count(*)::int AS n FROM wp_messages w JOIN attendance_events e ON e.id = w.event_id WHERE e.student_id = $1", [student.id])).rows[0].n;
+    check("scan: pencere içinde → duplicate: true, son olay döner", r.status === 200 && r.data.duplicate === true && r.data.eventId === inEvent.eventId && r.data.direction === "IN", r);
+    check("scan: çift okutmada yeni wp_messages yok", (await messageCount()) === 1);
+    await db.query("UPDATE attendance_events SET occurred_at = occurred_at - make_interval(secs => $3) WHERE id = $1 AND student_id = $2", [
+      inEvent.eventId,
+      student.id,
+      windowSeconds + 1,
+    ]);
+  }
+  const used = [s0, s0 + 1];
+  const now = currentSlot();
+  const nextSlot = [now, now + 1, now - 1, now - 2].find((s) => !used.includes(s));
+  r = await scan(studentToken, nextSlot, { direction: "IN" });
+  check(`scan: pencere (${windowSeconds} sn) geçince → OUT`, r.status === 200 && r.data.direction === "OUT" && r.data.duplicate === false && r.data.eventId !== inEvent.eventId, r);
+  check("scan: presence_status = OUT", (await presence()) === "OUT");
+  msgs = await eventMessages(r.data?.eventId);
+  check("scan: çıkışta da veliye bir WhatsApp mesajı MOCK_SENT", msgs.length === 1 && msgs[0].status === "MOCK_SENT", msgs);
+
   // Feed'de görünecek bir hareket ve bir okutma denemesi (öğrenci ve cihazla birlikte temizlenir).
   const eventId = `evt_${hex(8)}`;
   const attemptId = `att_${hex(8)}`;
@@ -268,6 +374,8 @@ async function run() {
   await db.query("UPDATE devices SET status = 'REVOKED', revoked_at = now() WHERE id = $1 AND student_id = $2", [device.id, student.id]);
   r = await call("GET", "/student/me", null, studentToken);
   check("me: cihaz REVOKED → 401 DEVICE_REVOKED", r.status === 401 && r.data.code === "DEVICE_REVOKED", r);
+  r = await scan(studentToken, currentSlot());
+  check("scan: cihaz REVOKED → 422 DEVICE_NOT_BOUND", r.status === 422 && r.data.code === "DEVICE_NOT_BOUND", r);
 }
 
 if (!process.env.DATABASE_URL) {

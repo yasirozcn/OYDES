@@ -62,7 +62,7 @@ AdminPanel/
     │   ├── protocol.ts ✅             QR/BLE/imza — mobildeki ile birebir aynı kurallar
     │   ├── phone.ts ✅                normalizePhone, phoneField — öğrenci giriş kimliği (+905XXXXXXXXX)
     │   ├── dummy.ts GEÇİCİ           henüz verisi olmayan listelerin örnek satırları (kök AGENTS.md §0.4); tüm BE görevleri bitince SİLİNİR
-    │   └── scan.ts ⏳         REJECT_MESSAGES, ScanInput, ScanResult, processScan, manualEvent
+    │   └── scan.ts ✅         REJECT_MESSAGES, ScanInput, ScanResult, processScan, manualEvent
     ├── components/
     │   ├── AutoRefresh.tsx ⏳          sayfayı N sn'de bir yeniler
     │   └── Badges.tsx ⏳               DirectionBadge, ReviewBadge, SourceBadge
@@ -87,7 +87,7 @@ AdminPanel/
             ├── config/route.ts ⏳
             ├── student/check-phone/route.ts ✅ · student/set-password/route.ts ⏳
             ├── student/login/route.ts ⏳ · student/me/route.ts ⏳
-            ├── scan/route.ts ⏳
+            ├── scan/route.ts ✅
             ├── admin/login/route.ts ⏳
             └── kiosks/route.ts ✅ · kiosks/[id]/start/route.ts ✅ · kiosks/[id]/feed/route.ts ✅
 ```
