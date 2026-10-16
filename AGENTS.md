@@ -158,7 +158,7 @@ FenBahceleri_IzmırFen/
 │       ├── lib/
 │       │   ├── db/  pg.ts ✅ · repo.ts ✅ · types.ts ✅              TÜM veritabanı erişimi burada
 │       │   ├── config.ts ⏳ · auth.ts ⏳ · session.ts ⏳ · api.ts ⏳         ayarlar, JWT, panel oturumu, route yardımcıları
-│       │   └── protocol.ts ⏳ · scan.ts ⏳ · whatsapp.ts ⏳ · phone.ts ✅       protokol, okutma kuralları, WhatsApp, telefon biçimi
+│       │   └── protocol.ts ⏳ · scan.ts ✅ · whatsapp.ts ⏳ · phone.ts ✅       protokol, okutma kuralları, WhatsApp, telefon biçimi
 │       ├── components/  AutoRefresh.tsx ⏳ · Badges.tsx ⏳
 │       └── app/
 │           ├── layout.tsx ✅ · globals.css ✅ · page.tsx ✅ (GEÇİCİ) · api/health/ ✅

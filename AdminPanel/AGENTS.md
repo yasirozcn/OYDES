@@ -59,10 +59,10 @@ AdminPanel/
     │   ├── api.ts ⏳                  ApiError, ok, handler, body, requireStudent, requireKioskAdmin, rateLimit, clientIp
     │   ├── whatsapp.ts ⏳     formatTime, formatDateTime, buildWhatsAppBody, dispatchWhatsApp
     │   ├── session.ts ⏳              createWebSession, destroyWebSession, getWebAdmin, requireWebAdmin
-    │   ├── protocol.ts ⏳             QR/BLE/imza — mobildeki ile birebir aynı kurallar
+    │   ├── protocol.ts ✅             QR/BLE/imza — mobildeki ile birebir aynı kurallar
     │   ├── phone.ts ✅                normalizePhone, phoneField — öğrenci giriş kimliği (+905XXXXXXXXX)
     │   ├── dummy.ts GEÇİCİ           henüz verisi olmayan listelerin örnek satırları (kök AGENTS.md §0.4); tüm BE görevleri bitince SİLİNİR
-    │   └── scan.ts ⏳         REJECT_MESSAGES, ScanInput, ScanResult, processScan, manualEvent
+    │   └── scan.ts ✅         REJECT_MESSAGES, ScanInput, ScanResult, processScan, manualEvent
     ├── components/
     │   ├── AutoRefresh.tsx ⏳          sayfayı N sn'de bir yeniler
     │   └── Badges.tsx ⏳               DirectionBadge, ReviewBadge, SourceBadge
@@ -87,9 +87,9 @@ AdminPanel/
             ├── config/route.ts ⏳
             ├── student/check-phone/route.ts ✅ · student/set-password/route.ts ⏳
             ├── student/login/route.ts ⏳ · student/me/route.ts ⏳
-            ├── scan/route.ts ⏳
+            ├── scan/route.ts ✅
             ├── admin/login/route.ts ⏳
-            └── kiosks/route.ts ⏳ · kiosks/[id]/start/route.ts ⏳ · kiosks/[id]/feed/route.ts ⏳
+            └── kiosks/route.ts ✅ · kiosks/[id]/start/route.ts ✅ · kiosks/[id]/feed/route.ts ✅
 ```
 
 **Referansta olup bu projeye EKLENMEYEN dosyalar:** `AdminPanel/docker-compose.yml` (yerel veritabanı), `POSTGRESQL_KURULUM.md`, `scripts/json-to-postgres.mjs`, `pnpm-lock.yaml`. `package.json`'a `db:up`, `db:down`, `db:reset`, `db:psql`, `db:import` eklenmez.
