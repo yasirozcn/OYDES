@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { DirectionBadge, ReviewBadge, SourceBadge } from "@/components/Badges";
+import { DirectionBadge, SourceBadge } from "@/components/Badges";
 import { dashboardStats, listEvents } from "@/lib/db/repo";
 import { requireWebAdmin } from "@/lib/session";
 import { formatDateTime } from "@/lib/whatsapp";
@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const tiles = [
     { label: "Okulda", value: stats.inside, sub: `${stats.total} öğrenciden`, tone: "text-brand-600" },
     { label: "Dışarıda", value: stats.outside, sub: "şu an", tone: "text-slate-900" },
-    { label: "Bugünkü hareket", value: stats.todayEvents, sub: `${stats.unreviewed} incelenmedi`, tone: "text-slate-900" },
+    { label: "Bugünkü hareket", value: stats.todayEvents, sub: "bugün", tone: "text-slate-900" },
     { label: "Reddedilen okutma", value: stats.rejectedToday, sub: "bugün", tone: stats.rejectedToday ? "text-red-800" : "text-slate-900" },
   ];
 
@@ -61,13 +61,12 @@ export default async function DashboardPage() {
                 <th>Hareket</th>
                 <th>Zaman</th>
                 <th>Kiosk</th>
-                <th>Durum</th>
               </tr>
             </thead>
             <tbody>
               {events.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-slate-400">
+                  <td colSpan={4}className="py-10 text-center text-slate-400">
                     Henüz giriş-çıkış yok. Mobil uygulamada yönetici girişiyle kiosk ekranını açıp bir öğrenci hesabıyla QR okutun.
                   </td>
                 </tr>
@@ -87,9 +86,6 @@ export default async function DashboardPage() {
                   </td>
                   <td className="font-mono text-sm tabular-nums">{formatDateTime(e.occurredAt)}</td>
                   <td className="text-slate-500">{e.kioskName ?? "-"}</td>
-                  <td>
-                    <ReviewBadge status={e.reviewStatus} />
-                  </td>
                 </tr>
               ))}
             </tbody>

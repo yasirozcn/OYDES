@@ -65,7 +65,7 @@ AdminPanel/
     │   └── scan.ts ✅         REJECT_MESSAGES, ScanInput, ScanResult, processScan, manualEvent
     ├── components/
     │   ├── AutoRefresh.tsx ⏳          sayfayı N sn'de bir yeniler
-    │   └── Badges.tsx ⏳               DirectionBadge, ReviewBadge, SourceBadge
+    │   └── Badges.tsx ⏳               DirectionBadge, SourceBadge
     └── app/
         ├── layout.tsx ✅ · globals.css ✅ (panel tasarımı yapılırken referans tasarımına güncellenir) · favicon.ico ✅
         ├── page.tsx ✅ GEÇİCİ — panel ana ekranı yazılınca SİLİNİR ("/" artık (panel)/page.tsx)
@@ -170,7 +170,7 @@ export async function deleteKiosk(id: string): Promise<boolean> {
 | `devices` | id = uygulamanın ürettiği deviceId, student_id, platform, device_secret, status `ACTIVE/REVOKED`, bound_at, revoked_at, revoked_by | öğrenci başına tek ACTIVE (kısmi tekil indeks); öğrenci silinince CASCADE |
 | `kiosks` | name, secret (32 bayt hex), status `ACTIVE/DISABLED`, last_seen_at | **yön kolonu yok** |
 | `scan_attempts` | device_id, student_id, kiosk_id, time_slot, ble_token, ble_rssi, ble_ok, integrity_ok, result `ACCEPTED/REJECTED`, reject_reason | (device_id, kiosk_id, time_slot) ACCEPTED için tekil; öğrenci/kiosk silinince SET NULL |
-| `attendance_events` | student_id, direction `IN/OUT`, occurred_at, source `APP/MANUAL/OFFLINE`, kiosk_id, scan_attempt_id, review_status `UNREVIEWED/OK/SUSPICIOUS`, reviewed_by, note | öğrenci silinince CASCADE; kiosk silinince SET NULL |
+| `attendance_events` | student_id, direction `IN/OUT`, occurred_at, source `APP/MANUAL/OFFLINE`, kiosk_id, scan_attempt_id, review_status `UNREVIEWED/OK/SUSPICIOUS`, reviewed_by, note | öğrenci silinince CASCADE; kiosk silinince SET NULL. `review_status`/`reviewed_by` kullanılmaz (hareket inceleme yok, kök AGENTS.md §0.2): her kayıt `UNREVIEWED` kalır |
 | `wp_messages` | event_id, guardian_id, phone, body, status `QUEUED/SENT/DELIVERED/FAILED/MOCK_SENT`, provider_message_id, attempt_count, sent_at, delivered_at | (event_id, guardian_id) tekil; olay silinince CASCADE |
 | `permissions` | izin kayıtları (kullanılmıyor) | |
 | `admin_users` | full_name, email, role `ADMIN/KIOSK`, password_hash, two_factor_enabled | `lower(email)` tekil |
@@ -189,8 +189,8 @@ Sayfalar sunucu bileşenidir, veriyi doğrudan repo'dan okur ve `export const dy
 | Yol | Dosya | Veri (repo) | İçerik |
 | --- | --- | --- | --- |
 | `/login` | `login/page.tsx` + `LoginForm.tsx` | `getWebAdmin` | Oturum varsa `/`'e yönlendir. Solda koyu tanıtım paneli (geniş ekranda): logo `İF`, "İzmir Fen", "Giriş-Çıkış Yönetim Paneli", büyük başlık "Kim okulda, kim çıktı — tek bakışta.". Sağda "Giriş-Çıkış Yönetim Paneli", "Yönetici hesabınızla giriş yapın.", form: E-posta, Şifre, "Giriş yap" / "Giriş yapılıyor…" |
-| `/` | `(panel)/page.tsx` | `dashboardStats()`, `listEvents({ limit: 15 })` | "Canlı durum" + `<AutoRefresh seconds={10} />`; 4 kart: **Okulda** (`inside`, "`total` öğrenciden", altında doluluk çubuğu), **Dışarıda** (`outside`, "şu an"), **Bugünkü hareket** (`todayEvents`, "`unreviewed` incelenmedi"), **Reddedilen okutma** (`rejectedToday`, "bugün"; >0 ise kırmızı kart). "Son hareketler" tablosu + "Tümünü gör →" `/hareketler` |
-| `/hareketler` | `(panel)/hareketler/page.tsx` | `listEvents({ review, onlyFlagged, limit: 300 })` | Filtre `?f=`: Tümü · İncelenmedi (`unreviewed`) · Dikkat gerekenler (`flagged`) · Şüpheli (`suspicious`). Tablo + "Uygun"/"Şüpheli" düğmeleri; şüpheli satır açık kırmızı; not varsa "Not: …" |
+| `/` | `(panel)/page.tsx` | `dashboardStats()`, `listEvents({ limit: 15 })` | "Canlı durum" + `<AutoRefresh seconds={10} />`; 4 kart: **Okulda** (`inside`, "`total` öğrenciden", altında doluluk çubuğu), **Dışarıda** (`outside`, "şu an"), **Bugünkü hareket** (`todayEvents`, "bugün"), **Reddedilen okutma** (`rejectedToday`, "bugün"; >0 ise kırmızı kart). "Son hareketler" tablosu + "Tümünü gör →" `/hareketler` |
+| `/hareketler` | `(panel)/hareketler/page.tsx` | `listEvents({ limit: 300 })` | Tablo (inceleme düğmesi/filtresi yok, kök AGENTS.md §0.2); manuel/çevrimdışı kayıtta kaynak rozeti; not varsa "Not: …" |
 | `/ogrenciler` | `(panel)/ogrenciler/page.tsx` + `StudentForms.tsx` | `listStudents()` | Tablo (Öğrenci · Telefon · Veli · Durum · Cihaz · İşlemler) + "Yeni öğrenci ekle" formu |
 | `/kiosklar` | `(panel)/kiosklar/page.tsx` + `DeleteKioskButton.tsx` + `AccountForms.tsx` | `listKiosks()`, `listKioskAccounts()` | Kiosk tablosu (Ad · Durum · Son sinyal · Devre dışı bırak/Etkinleştir + Sil), "Yeni kiosk" formu, "Kiosk tablet hesapları" tablosu (Ad · E-posta · şifre sıfırlama formu) + "Yeni kiosk hesabı" formu |
 | `/denemeler` | `(panel)/denemeler/page.tsx` | `listScanAttempts(true, 300)` | "Reddedilen okutmalar": Zaman · Öğrenci · Kiosk · Neden (kod rozeti + `REJECT_MESSAGES` açıklaması) · BLE ("doğru"/"hatalı" + " · -60 dBm", jeton yoksa "yok") |
@@ -209,7 +209,6 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | `resetDeviceAction(form)` | `studentId` | `resetStudentDevice(id, admin.id)` | `DEVICE_RESET` (student) | `/ogrenciler` | Cihaz REVOKED + şifre silinir |
 | `createStudentAction(prev, form)` | `schoolNo, firstName, lastName, className, phone, email (isteğe bağlı), guardianName, guardianPhone` | `createStudent` (telefon `phoneField` ile çevrilir) | `STUDENT_CREATED` (student) `{ phone }` | `/ogrenciler` | Dönüş `{ error?, ok? }`; zod hatası → "Lütfen zorunlu alanları doğru doldurun."; repo hatası mesajı aynen döner |
 | `manualEventAction(form)` | `studentId, direction, note` | `getStudent` + `manualEvent` (scan.ts) | `MANUAL_EVENT` (attendance_event) `{ direction, note }` | `/`, `/ogrenciler`, `/hareketler` | Not boşsa "Manuel kayıt"; yön mevcut durumla aynıysa sessizce çık |
-| `reviewEventAction(form)` | `eventId, status` (OK/SUSPICIOUS) | `reviewEvent(id, status, admin.id)` | `EVENT_REVIEWED` (attendance_event) `{ status }` | `/hareketler`, `/` | |
 | `createKioskAction(form)` | `name` | `createKiosk(name)` | `KIOSK_CREATED` (kiosk) `{ name }` | `/kiosklar` | Ad boşsa çık |
 | `toggleKioskAction(form)` | `kioskId, status` | `setKioskStatus` | `KIOSK_STATUS` (kiosk) `{ status }` | `/kiosklar` | |
 | `deleteKioskAction(form)` | `kioskId` | `getKiosk` + `deleteKiosk` | `KIOSK_DELETED` (kiosk) before `{ name, status }`, after `null` | `/kiosklar` | Kiosk yoksa çık |
@@ -218,11 +217,11 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 
 `src/app/login/actions.ts`: `loginAction(prev, form)` (audit `WEB_LOGIN`, entity `admin_user`) ve `logoutAction()`.
 
-**Tüm audit işlem adları:** `WEB_LOGIN, KIOSK_LOGIN, KIOSK_START, PASSWORD_CREATED (adminUserId null), PASSWORD_RESET, DEVICE_RESET, STUDENT_CREATED, MANUAL_EVENT, EVENT_REVIEWED, KIOSK_CREATED, KIOSK_STATUS, KIOSK_DELETED, KIOSK_ACCOUNT_CREATED, KIOSK_ACCOUNT_PASSWORD_RESET`. Başka ad uydurulmaz.
+**Tüm audit işlem adları:** `WEB_LOGIN, KIOSK_LOGIN, KIOSK_START, PASSWORD_CREATED (adminUserId null), PASSWORD_RESET, DEVICE_RESET, STUDENT_CREATED, MANUAL_EVENT, KIOSK_CREATED, KIOSK_STATUS, KIOSK_DELETED, KIOSK_ACCOUNT_CREATED, KIOSK_ACCOUNT_PASSWORD_RESET`. Başka ad uydurulmaz.
 
 ### 4.3 Tasarım
 
-`globals.css` referanstaki dosyayla aynı yapılır (renk paleti: yeşil `#17613c`, sıcak nötrler `#f4f3ee`/`#14211a`, giriş yeşil, çıkış mavi `#1e4fa8`, uyarı amber, hata kırmızı, manuel mor; bileşen sınıfları `@layer components` içinde). Rozetler (`Badges.tsx`): Giriş "→ Giriş" yeşil, Çıkış "← Çıkış" mavi; Uygun yeşil, Şüpheli kırmızı, İncelenmedi gri; kaynak MANUAL "Manuel" / OFFLINE "Çevrimdışı" mor, APP gösterilmez.
+`globals.css` referanstaki dosyayla aynı yapılır (renk paleti: yeşil `#17613c`, sıcak nötrler `#f4f3ee`/`#14211a`, giriş yeşil, çıkış mavi `#1e4fa8`, uyarı amber, hata kırmızı, manuel mor; bileşen sınıfları `@layer components` içinde). Rozetler (`Badges.tsx`): Giriş "→ Giriş" yeşil, Çıkış "← Çıkış" mavi; kaynak MANUAL "Manuel" / OFFLINE "Çevrimdışı" mor, APP gösterilmez.
 
 ## 5. Mobil API
 
@@ -279,7 +278,7 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | `DATABASE_POOL_MAX` | `3` |
 | `DATABASE_OWNER_URL` | **Yalnızca proje sahibi** — ekipte boş |
 | `AUTH_SECRET` | JWT anahtarı. Boşsa geliştirmede sabit anahtar kullanılır. Herkes kendisi üretir (`openssl rand -hex 32`), paylaşılmaz; canlıda zorunlu (kök AGENTS.md §5.1) |
-| `BLE_REQUIRED` | `true`: BLE jetonu zorunlu (varsayılan `false`) |
+| `BLE_REQUIRED` | `true`: BLE jetonu zorunlu (varsayılan `false`). Geliştirmede `false`, **canlıda `true`** (kök AGENTS.md §0.2, hareket inceleme yok) |
 | `DUPLICATE_WINDOW_SECONDS` | Çift okutma penceresi (varsayılan 120) |
 | `WHATSAPP_PROVIDER` | `mock` |
 | `SCHOOL_SHORT_NAME` | WhatsApp mesajı imzası (`"Izmir Fen"`) |
