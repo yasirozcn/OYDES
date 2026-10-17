@@ -66,8 +66,14 @@ export async function createStudentAction(_prev: { error?: string; ok?: boolean 
     await addAudit({ adminUserId: admin.id, action: "STUDENT_CREATED", entity: "student", entityId: student.id, beforeValue: null, afterValue: { phone: student.phone } });
   } catch (e) {
     // Aynı e-postayla ikinci öğrenci: veritabanının tekil indeks hatası (students_email_uq) yerine Türkçe mesaj.
-    if ((e as { constraint?: string }).constraint === "students_email_uq") return { error: "Bu e-posta ile kayıtlı bir öğrenci var." };
-    return { error: e instanceof Error ? e.message : "Kayıt oluşturulamadı." };
+    const constraint = (e as { constraint?: string }).constraint;
+    if (constraint === "students_email_uq") return { error: "Bu e-posta ile kayıtlı bir öğrenci var." };
+    // Aynı telefon: createStudent'in kendi hatası ya da aynı anda iki kayıtta ön kontrolü geçen ikincisinin tekil indeks hatası.
+    // Diğer hataların (ör. bağlantı koptu) ayrıntısı yalnızca sunucu logunda kalır.
+    const duplicatePhone = "Bu telefon numarası ile kayıtlı bir öğrenci var.";
+    if (constraint === "students_phone_uq" || (e instanceof Error && e.message === duplicatePhone)) return { error: duplicatePhone };
+    console.error("[db] öğrenci oluşturulamadı", e);
+    return { error: "Kayıt oluşturulamadı." };
   }
   revalidatePath("/ogrenciler");
   return { ok: true };

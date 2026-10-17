@@ -207,7 +207,7 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | --- | --- | --- | --- | --- | --- |
 | `resetPasswordAction(form)` | `studentId` | `resetStudentPassword` | `PASSWORD_RESET` (student) | `/ogrenciler` | Cihaz bağlı kalır |
 | `resetDeviceAction(form)` | `studentId` | `resetStudentDevice(id, admin.id)` | `DEVICE_RESET` (student) | `/ogrenciler` | Cihaz REVOKED + şifre silinir |
-| `createStudentAction(prev, form)` | `schoolNo, firstName, lastName, className, phone, email (isteğe bağlı), guardianName, guardianPhone` | `createStudent` (telefon `phoneField` ile çevrilir) | `STUDENT_CREATED` (student) `{ phone }` | `/ogrenciler` | Dönüş `{ error?, ok? }`; zod hatası → "Lütfen zorunlu alanları doğru doldurun."; repo hatası mesajı aynen döner |
+| `createStudentAction(prev, form)` | `schoolNo, firstName, lastName, className, phone, email (isteğe bağlı), guardianName, guardianPhone` | `createStudent` (telefon `phoneField` ile çevrilir) | `STUDENT_CREATED` (student) `{ phone }` | `/ogrenciler` | Dönüş `{ error?, ok? }`; zod hatası → "Lütfen zorunlu alanları doğru doldurun."; e-posta/telefon tekrarı → Türkçe mesaj; diğer hatalar → "Kayıt oluşturulamadı." (ayrıntı yalnızca sunucu logunda, `[db]`) |
 | `manualEventAction(form)` | `studentId, direction, note` | `getStudent` + `manualEvent` (scan.ts) | `MANUAL_EVENT` (attendance_event) `{ direction, note }` | `/`, `/ogrenciler`, `/hareketler` | Not boşsa "Manuel kayıt"; yön mevcut durumla aynıysa sessizce çık |
 | `createKioskAction(form)` | `name` | `createKiosk(name)` | `KIOSK_CREATED` (kiosk) `{ name }` | `/kiosklar` | Ad boşsa çık |
 | `toggleKioskAction(form)` | `kioskId, status` | `setKioskStatus` | `KIOSK_STATUS` (kiosk) `{ status }` | `/kiosklar` | |
