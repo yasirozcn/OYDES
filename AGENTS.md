@@ -96,6 +96,7 @@ Panel (FE) ve uygulama (APP) görevleri, henüz yazılmamış backend parçasın
 | Canlı veritabanı | `deploy/docker-compose.yml` içinde ayrı `db` konteyneri | **Aynı Lightsail sunucusundaki `infra/dev-db` veritabanı** (proje sahibinin kararı): `deploy/` yalnızca `app` + `caddy` çalıştırır, `izmirfen-devdb_default` ağına katılır; şemayı `kur.sh` uygular. Rehber: `CANLIYA_ALMA.md` |
 | Veli bildirimi | SMS (`sms_messages`, yalnızca `mock`) | **WhatsApp** (`wp_messages`, `WHATSAPP_PROVIDER=mock`); gerçek WhatsApp sağlayıcısı isteğe bağlı son görev |
 | Öğrenci giriş kimliği | e-posta (`students.email`, `POST /student/check-email`, gövdelerde `email`) | **cep telefonu** (`students.phone`, tekil, `+905XXXXXXXXX`; `POST /student/check-phone`, gövdelerde `phone`; `src/lib/phone.ts` yazım biçimlerini çevirir). `students.email` isteğe bağlı bilgi |
+| Hareket inceleme | `/hareketler`'de "Uygun"/"Şüpheli" düğmeleri ve filtreleri, `reviewEventAction`, `EVENT_REVIEWED` denetim kaydı, `ReviewBadge` | **Yok** (karar: Alperen Eser). Kabul edilmiş kayıt sonradan incelenmez; sahte okutma baştan reddedilir: kayıtlı cihaz (`DEVICE_NOT_BOUND`, `BAD_SIGNATURE`), QR süresi (`EXPIRED_QR`), BLE (`BLE_MISSING`, `BLE_MISMATCH` — geliştirmede `BLE_REQUIRED=false`, canlıda `true`). `review_status`/`reviewed_by` şemada kalır, her kayıt `UNREVIEWED` |
 | Örnek veri (`seed.ts`, `@fenbahceleri.test` hesapları) | Boş veritabanına otomatik eklenir | **Yok** — yöneticiler `npm run admin:create`, öğrenciler panelden/veritabanından eklenir |
 
 **Değişmeyenler (protokol — dokunmayın):** `FB2`, `BLE_SERVICE_UUID`, BLE yerel ad öneki `"FB"`, panel çerezi `fb_admin`, mobil güvenli depo anahtarları `fb.deviceId / fb.deviceSecret / fb.studentToken / fb.adminToken / fb.boundEmail`, kimlik önekleri (`stu_`, `kiosk_` …).
@@ -107,7 +108,7 @@ Panel (FE) ve uygulama (APP) görevleri, henüz yazılmamış backend parçasın
 1. Okul kapısında bir **kiosk** (Android tablet) durur; ekranında **5 saniyede bir değişen imzalı bir QR kod** gösterir ve aynı anda **Bluetooth (BLE) ile kısa ömürlü bir jeton** yayınlar.
 2. Öğrenci kendi telefonundaki uygulamayla QR'ı okutur. Telefon, kioskun BLE jetonunu da duyduğunu kanıtlar (QR'ın fotoğrafını eve götürüp okutmayı engeller).
 3. Sunucu okutmayı doğrular, **giriş veya çıkış** kaydı açar ve veliye WhatsApp mesajı kaydı oluşturur.
-4. Okul yönetimi **web panelinden** öğrencileri, cihazları, kayıtları ve reddedilen (şüpheli) okutmaları izler.
+4. Okul yönetimi **web panelinden** öğrencileri, cihazları, kayıtları ve reddedilen okutmaları izler.
 
 **Tek kiosk, yönsüz QR:** Kioskun giriş/çıkış ayrımı yoktur. Öğrencinin **ilk** okutmasında uygulama "Giriş mi, çıkış mı?" diye sorar; sonraki her okutmada yönü **sunucu** belirler (okuldaysa çıkış, dışarıdaysa giriş).
 
