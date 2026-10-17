@@ -80,7 +80,7 @@ QrScannerApp/
 ├── AGENTS.md, CLAUDE.md ✅ · README.md ⏳ · CIHAZ_TESTI.md ⏳ · TESTFLIGHT.md ⏳
 ├── package.json ✅ · app.json ✅ · app.config.ts ✅ · tsconfig.json ✅ · eslint.config.js ✅ · .env.example ✅ · assets/ ✅
 ├── eas.json ⏳                     profiller: development · preview · production · kiosk-lan (gerçek IP/kimlik yazılmaz)
-├── modules/kiosk-beacon/ ⏳        Android BLE yayın modülü
+├── modules/kiosk-beacon/ ✅        Android BLE yayın modülü
 │   ├── index.ts                           KioskBeacon { isSupported, lastError, start, stop }
 │   ├── expo-module.config.json
 │   ├── android/build.gradle · android/src/main/AndroidManifest.xml
@@ -89,26 +89,26 @@ QrScannerApp/
 ├── tools/ ⏳                               mac-kiosk-beacon.swift · ios-kur.sh · android-apk.sh
 └── src/
     ├── app/                               EKRANLAR
-    │   ├── _layout.tsx ✅ (oturum altyapısında SessionProvider, Bluetooth uyarısında BluetoothGate eklenir)
+    │   ├── _layout.tsx ✅ (SessionProvider + Stack + BluetoothGate)
     │   ├── index.tsx ✅ GEÇİCİ → açılış ekranıyla DEĞİŞTİRİLİR
     │   ├── student-login.tsx ✅      telefon → şifre oluştur | şifre
     │   ├── student-home.tsx ✅       durum, son hareketler, "QR okut", çıkış yap
-    │   ├── scan.tsx ⏳       ilk okutmada yön seçimi → kamera (+BLE) → sonuç
+    │   ├── scan.tsx ✅       ilk okutmada yön seçimi → kamera (+BLE) → sonuç
     │   ├── admin-login.tsx ✅        kiosk hesabıyla giriş
     │   ├── kiosk-select.tsx ✅       kiosk seçimi
-    │   ├── kiosk/[id].tsx ✅ dönen QR + son okutan (BLE yayını APP-5'te eklenir)
-    │   └── ble-debug.tsx ⏳          Bluetooth testi
+    │   ├── kiosk/[id].tsx ✅ dönen QR + BLE yayını + son okutan
+    │   └── ble-debug.tsx ✅          Bluetooth testi
     ├── components/
     │   ├── ui.tsx ✅                 mono, Screen, Title, Button, Field, ErrorBox, InfoBox, Card, TopBar, Pill, styles
     │   ├── icons.tsx ✅              IconBack, IconArrowRight, IconCheck, IconIn, IconOut, IconQr, IconBluetooth, IconBluetoothOff, IconInfo, IconAlert, IconX, IconPhone, IconShield, IconMail, IconLogout, IconCamera
-    │   └── BluetoothGate.tsx ⏳      Bluetooth kapalı/izin yok uyarısı
+    │   └── BluetoothGate.tsx ✅      Bluetooth kapalı/izin yok uyarısı
     └── lib/
         ├── config.ts ✅ API_URL, colors (renk paleti referansınkiyle değiştirilir)
         ├── api.ts ✅                 ApiError, api<T>(), yanıt tipleri
         ├── device.ts ✅              getDeviceIdentity, clearBinding, tokens
         ├── session.tsx ✅            SessionProvider, useSession
         ├── protocol.ts ✅            PROTOCOL_VERSION, slotAt, buildQrPayload, isOurQr, bleToken, requestSignature, __test
-        └── ble.ts ⏳                 bleLog, getBleLog, clearBleLog, subscribeBleLog, isBleAvailable, subscribeBtState, openBluetoothSettings, extractKioskToken, startBleScan (+ tipler BtState, Found, BleStatus, BleLogEntry, SeenDevice)
+        └── ble.ts ✅                 bleLog, getBleLog, clearBleLog, subscribeBleLog, isBleAvailable, subscribeBtState, openBluetoothSettings, extractKioskToken, startBleScan (+ tipler BtState, Found, BleStatus, BleLogEntry, SeenDevice)
 ```
 `ios/` ve `android/` klasörleri **üretilir** (git'e girmez); elle oluşturulmaz/düzenlenmez.
 
