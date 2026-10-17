@@ -94,21 +94,20 @@ QrScannerApp/
     │   ├── student-login.tsx ✅      telefon → şifre oluştur | şifre
     │   ├── student-home.tsx ✅       durum, son hareketler, "QR okut", çıkış yap
     │   ├── scan.tsx ⏳       ilk okutmada yön seçimi → kamera (+BLE) → sonuç
-    │   ├── admin-login.tsx ⏳        kiosk hesabıyla giriş
-    │   ├── kiosk-select.tsx ⏳       kiosk seçimi
-    │   ├── kiosk/[id].tsx ⏳ dönen QR + BLE yayını + son okutan
+    │   ├── admin-login.tsx ✅        kiosk hesabıyla giriş
+    │   ├── kiosk-select.tsx ✅       kiosk seçimi
+    │   ├── kiosk/[id].tsx ✅ dönen QR + son okutan (BLE yayını APP-5'te eklenir)
     │   └── ble-debug.tsx ⏳          Bluetooth testi
     ├── components/
-    │   ├── ui.tsx ⏳                 mono, Screen, Title, Button, Field, ErrorBox, InfoBox, Card, TopBar, Pill, styles
-    │   ├── icons.tsx ⏳              IconBack, IconArrowRight, IconCheck, IconIn, IconOut, IconQr, IconBluetooth, IconBluetoothOff, IconInfo, IconAlert, IconX, IconPhone, IconShield, IconMail, IconLogout, IconCamera
+    │   ├── ui.tsx ✅                 mono, Screen, Title, Button, Field, ErrorBox, InfoBox, Card, TopBar, Pill, styles
+    │   ├── icons.tsx ✅              IconBack, IconArrowRight, IconCheck, IconIn, IconOut, IconQr, IconBluetooth, IconBluetoothOff, IconInfo, IconAlert, IconX, IconPhone, IconShield, IconMail, IconLogout, IconCamera
     │   └── BluetoothGate.tsx ⏳      Bluetooth kapalı/izin yok uyarısı
     └── lib/
         ├── config.ts ✅ API_URL, colors (renk paleti referansınkiyle değiştirilir)
-        ├── api.ts ⏳                 ApiError, api<T>(), yanıt tipleri
-        ├── device.ts ⏳              getDeviceIdentity, clearBinding, tokens
-        ├── session.tsx ⏳            SessionProvider, useSession
-        ├── protocol.ts ⏳            PROTOCOL_VERSION, slotAt, buildQrPayload, isOurQr, bleToken, requestSignature, __test
-        ├── dummy.ts GEÇİCİ           sunucuda henüz olmayan uç noktaların örnek yanıtları (kök AGENTS.md §0.4); api.ts'te tek __DEV__ satırıyla kullanılır, BE-2/BE-3 bitince SİLİNİR
+        ├── api.ts ✅                 ApiError, api<T>(), yanıt tipleri
+        ├── device.ts ✅              getDeviceIdentity, clearBinding, tokens
+        ├── session.tsx ✅            SessionProvider, useSession
+        ├── protocol.ts ✅            PROTOCOL_VERSION, slotAt, buildQrPayload, isOurQr, bleToken, requestSignature, __test
         └── ble.ts ⏳                 bleLog, getBleLog, clearBleLog, subscribeBleLog, isBleAvailable, subscribeBtState, openBluetoothSettings, extractKioskToken, startBleScan (+ tipler BtState, Found, BleStatus, BleLogEntry, SeenDevice)
 ```
 `ios/` ve `android/` klasörleri **üretilir** (git'e girmez); elle oluşturulmaz/düzenlenmez.
