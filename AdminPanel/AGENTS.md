@@ -53,7 +53,7 @@ AdminPanel/
 └── src/
     ├── lib/
     │   ├── db/pg.ts ✅ · db/types.ts ✅
-    │   ├── db/repo.ts ✅ (+ kiosk silme ve kiosk tablet hesapları için 4 fonksiyon eklenecek — §3.2)
+    │   ├── db/repo.ts ✅ (+ kiosk silme ve kiosk tablet hesapları için 4 fonksiyon eklendi (BE-5) — §3.2)
     │   ├── config.ts ⏳               ortam değişkenleri (tek yer)
     │   ├── auth.ts ⏳                 signToken, verifyToken, bearerClaims
     │   ├── api.ts ⏳                  ApiError, ok, handler, body, requireStudent, requireKioskAdmin, rateLimit, clientIp
@@ -132,7 +132,7 @@ export const GET = handler(async (req: Request) => {
 **Hazır olanlar** (yeniden yazmayın, yalnızca çağırın):
 `newId, findStudentByPhone, getStudent, listStudents (StudentRow), createStudent, setStudentPassword, getActiveDevice, getActiveDeviceForStudent, BindError, setFirstPasswordAndBindDevice, resetStudentPassword, resetStudentDevice, findAdminByEmail, getAdmin, listKiosks, getKiosk, touchKiosk, createKiosk, setKioskStatus, insertScanAttempt, isReplay, lastEventForStudent, createEventWithWhatsApp, updateWhatsAppMessage, getEvent, reviewEvent, listEvents (EventRow), listScanAttempts (AttemptRow), listKioskAttempts, listWhatsAppMessages, dashboardStats, addAudit, listAudit, dbHealth`.
 
-**Eklenecek 4 fonksiyon** (referanstaki `repo.ts` ile birebir aynı; ekleme yerleri referanstaki gibi):
+**Eklenen 4 fonksiyon (BE-5)** (referanstaki `repo.ts` ile birebir aynı; ekleme yerleri referanstaki gibi):
 ```ts
 // "yöneticiler" bölümüne, getAdmin'den sonra (kiosk tablet hesapları)
 /** Kiosk tableti hesapları (şifre özeti olmadan). */
