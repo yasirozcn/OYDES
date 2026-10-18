@@ -66,7 +66,7 @@ export default async function DashboardPage() {
             <tbody>
               {events.length === 0 && (
                 <tr>
-                  <td colSpan={4}className="py-10 text-center text-slate-400">
+                  <td colSpan={4} className="py-10 text-center text-slate-400">
                     Henüz giriş-çıkış yok. Mobil uygulamada yönetici girişiyle kiosk ekranını açıp bir öğrenci hesabıyla QR okutun.
                   </td>
                 </tr>
