@@ -3,7 +3,7 @@ import type { BleError, BleManager, Device } from "react-native-ble-plx";
 
 // Öğrenci telefonunda kioskun BLE jetonunu dinler.
 // Yerel BLE modülü yoksa (Expo Go) BLE devre dışı kalır; okutma BLE'siz devam eder.
-// Tüm olaylar "[BLE]" önekiyle konsola ve uygulama içi loga (Bluetooth testi ekranı) yazılır.
+// Tüm olaylar "[BLE]" önekiyle konsola yazılır.
 
 export type BtState = "unavailable" | "Unknown" | "Resetting" | "Unsupported" | "Unauthorized" | "PoweredOff" | "PoweredOn";
 export type Found = { token: string; rssi: number | null; at: number; source: "service-data" | "local-name"; deviceId: string };

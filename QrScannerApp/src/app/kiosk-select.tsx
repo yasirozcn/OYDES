@@ -85,7 +85,6 @@ export default function KioskSelect() {
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 16, padding: 14, borderRadius: 18, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line }}>
         <IconBluetooth size={22} color={colors.brand} />
         <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, color: colors.inkSoft }}>Kiosk QR ile birlikte Bluetooth sinyali yayınlar. Tableti şarja takılı ve Bluetooth açık bırakın.</Text>
-        <Button title="Bluetooth testi" variant="secondary" onPress={() => router.push("/ble-debug")} style={{ minHeight: 44, borderRadius: 12 }} />
       </View>
     </Screen>
   );

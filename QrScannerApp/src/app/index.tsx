@@ -2,7 +2,7 @@ import { Redirect, router } from "expo-router";
 import { ActivityIndicator, Text, View } from "react-native";
 import { IconBluetooth, IconQr } from "@/components/icons";
 import { Button, Logo, Screen, styles } from "@/components/ui";
-import { API_URL, colors } from "@/lib/config";
+import { colors } from "@/lib/config";
 import { useSession } from "@/lib/session";
 
 // Açılış: oturum varsa ilgili ekrana, yoksa "Öğrenci girişi / Yönetici girişi" seçimine.
@@ -47,9 +47,7 @@ export default function Home() {
 
         <Button title="Öğrenci girişi" onPress={() => router.push("/student-login")} />
         <Button title="Yönetici girişi (kiosk)" variant="secondary" style={{ marginTop: 12 }} onPress={() => router.push("/admin-login")} />
-        <Button title="Bluetooth testi" variant="ghost" style={{ marginTop: 8 }} onPress={() => router.push("/ble-debug")} />
       </View>
-      <Text style={{ textAlign: "center", color: colors.muted, fontSize: 11 }}>Sunucu: {API_URL}</Text>
     </Screen>
   );
 }

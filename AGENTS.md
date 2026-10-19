@@ -175,7 +175,7 @@ FenBahceleri_IzmırFen/
     ├── tools/ ⏳                           mac-kiosk-beacon.swift · ios-kur.sh · android-apk.sh
     └── src/
         ├── app/                           _layout ✅ · index ✅ · student-login ✅ (telefon) · student-home ✅ · scan ⏳
-        │                                  admin-login ⏳ · kiosk-select ⏳ · kiosk/[id] ⏳ · ble-debug ⏳
+        │                                  admin-login ⏳ · kiosk-select ⏳ · kiosk/[id] ⏳
         ├── components/ ⏳                  ui.tsx · icons.tsx · BluetoothGate.tsx
         └── lib/                           config ✅ · api ⏳ · session ⏳ · device ⏳ · protocol ⏳ · ble ⏳
 ```

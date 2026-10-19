@@ -288,13 +288,6 @@ export default function Scan() {
       <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push("/ble-debug")}
-          style={({ pressed }) => ({ flex: 1, minHeight: 52, borderRadius: 14, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.35)", alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
-        >
-          <Text style={{ fontSize: 16, fontWeight: "700", color: colors.white }}>Bluetooth testi</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
           onPress={() => router.back()}
           style={({ pressed }) => ({ flex: 1, minHeight: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
         >
