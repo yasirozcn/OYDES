@@ -1,7 +1,7 @@
 import { Redirect, router } from "expo-router";
 import { ActivityIndicator, Text, View } from "react-native";
 import { IconBluetooth, IconQr } from "@/components/icons";
-import { Button, Screen, styles } from "@/components/ui";
+import { Button, Logo, Screen, styles } from "@/components/ui";
 import { API_URL, colors } from "@/lib/config";
 import { useSession } from "@/lib/session";
 
@@ -24,9 +24,7 @@ export default function Home() {
     <Screen>
       <View style={{ flex: 1, justifyContent: "center" }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 28 }}>
-          <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: colors.white, fontSize: 19, fontWeight: "800" }}>İF</Text>
-          </View>
+          <Logo size={52} />
           <Text style={{ fontSize: 14, fontWeight: "700", letterSpacing: 1.4, color: colors.brand, textTransform: "uppercase" }}>İzmir Fen</Text>
         </View>
         <Text style={[styles.title, { fontSize: 36, lineHeight: 40 }]}>Okul Giriş-Çıkış</Text>

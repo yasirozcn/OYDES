@@ -78,15 +78,15 @@ Sunucu adresi: `.env` → `EXPO_PUBLIC_API_URL` (derlemede uygulamaya gömülür
 ```
 QrScannerApp/
 ├── AGENTS.md, CLAUDE.md ✅ · README.md ⏳ · CIHAZ_TESTI.md ⏳ · TESTFLIGHT.md ⏳
-├── package.json ✅ · app.json ✅ · app.config.ts ✅ · tsconfig.json ✅ · eslint.config.js ✅ · .env.example ✅ · assets/ ✅
-├── eas.json ⏳                     profiller: development · preview · production · kiosk-lan (gerçek IP/kimlik yazılmaz)
+├── package.json ✅ · app.json ✅ · app.config.ts ✅ · tsconfig.json ✅ · eslint.config.js ✅ · .env.example ✅ · assets/ ✅ (uygulama adı `DOQR`; ikonlar + logo.png)
+├── eas.json ✅                     profiller: development · preview · production · kiosk-lan (gerçek IP/kimlik yazılmaz)
 ├── modules/kiosk-beacon/ ✅        Android BLE yayın modülü
 │   ├── index.ts                           KioskBeacon { isSupported, lastError, start, stop }
 │   ├── expo-module.config.json
 │   ├── android/build.gradle · android/src/main/AndroidManifest.xml
 │   ├── android/src/main/java/expo/modules/kioskbeacon/KioskBeaconModule.kt
 │   └── ios/KioskBeaconModule.swift · ios/KioskBeacon.podspec
-├── tools/ ⏳                               mac-kiosk-beacon.swift · ios-kur.sh · android-apk.sh
+├── tools/                                 mac-kiosk-beacon.swift · ios-kur.sh · android-apk.sh ⏳
 └── src/
     ├── app/                               EKRANLAR
     │   ├── _layout.tsx ✅ (SessionProvider + Stack + BluetoothGate)
@@ -99,7 +99,7 @@ QrScannerApp/
     │   ├── kiosk/[id].tsx ✅ dönen QR + BLE yayını + son okutan
     │   └── ble-debug.tsx ✅          Bluetooth testi
     ├── components/
-    │   ├── ui.tsx ✅                 mono, Screen, Title, Button, Field, ErrorBox, InfoBox, Card, TopBar, Pill, styles
+    │   ├── ui.tsx ✅                 mono, Logo, Screen, Title, Button, Field, ErrorBox, InfoBox, Card, TopBar, Pill, styles
     │   ├── icons.tsx ✅              IconBack, IconArrowRight, IconCheck, IconIn, IconOut, IconQr, IconBluetooth, IconBluetoothOff, IconInfo, IconAlert, IconX, IconPhone, IconShield, IconMail, IconLogout, IconCamera
     │   └── BluetoothGate.tsx ✅      Bluetooth kapalı/izin yok uyarısı
     └── lib/
@@ -155,12 +155,12 @@ Tüm ekranlar `Screen` içinde; üst gezinme `TopBar` (geri oku + küçük başl
 
 | Ekran | API | Davranış ve metinler |
 | --- | --- | --- |
-| `index.tsx` Açılış | — | `ready` değilse yükleniyor. `adminToken` → `<Redirect href="/kiosk-select" />`; `studentToken` → `/student-home`. Yoksa: logo kutusu `İF` + "İzmir Fen", başlık "Okul Giriş-Çıkış", "Okula girişte ve çıkışta kiosk ekranındaki QR kodu bu uygulamayla okutun.", bilgi kartı ("Kapıdaki kodu okutun" QR ikonu, "Bluetooth açık olsun" Bluetooth ikonu), düğmeler **Öğrenci girişi** (`/student-login`), **Yönetici girişi (kiosk)** (secondary, `/admin-login`), **Bluetooth testi** (ghost, `/ble-debug`); altta küçük "Sunucu: {API_URL}" |
+| `index.tsx` Açılış | — | `ready` değilse yükleniyor. `adminToken` → `<Redirect href="/kiosk-select" />`; `studentToken` → `/student-home`. Yoksa: `Logo` (okul logosu) + "İzmir Fen", başlık "Okul Giriş-Çıkış", "Okula girişte ve çıkışta kiosk ekranındaki QR kodu bu uygulamayla okutun.", bilgi kartı ("Kapıdaki kodu okutun" QR ikonu, "Bluetooth açık olsun" Bluetooth ikonu), düğmeler **Öğrenci girişi** (`/student-login`), **Yönetici girişi (kiosk)** (secondary, `/admin-login`), **Bluetooth testi** (ghost, `/ble-debug`); altta küçük "Sunucu: {API_URL}" |
 | `student-login.tsx` | `POST /student/check-phone`, `/student/set-password`, `/student/login` | Adımlar `phone → create-password | password` (aynı ekran). **Telefon**: başlık "Öğrenci girişi", "Okulun sisteme kaydettiği cep telefonu numaranızı girin.", alan "Cep telefonu" (ipucu `05XX XXX XX XX`, telefon klavyesi), "Devam". Rakamlar `05XXXXXXXXX` / `5XXXXXXXXX` / `905XXXXXXXXX` değilse "Geçerli bir cep telefonu numarası girin."; numara yazıldığı gibi gönderilir, biçimi sunucu çevirir. **Şifre oluşturun** (TopBar "İlk giriş"): "Merhaba {firstName}. Bundan sonraki girişlerde bu şifreyi kullanacaksınız.", InfoBox "Şifrenizi kaydettiğinizde hesabınız bu telefona bağlanır. Başka bir telefondan giriş yapmak için okul yönetiminin cihazınızı sıfırlaması gerekir.", alanlar "Şifre (en az 8 karakter)" + "Şifre (tekrar)", canlı kural göstergeleri "En az 8 karakter" / "İki şifre aynı", istemci hataları "Şifre en az 8 karakter olmalı." / "Şifreler eşleşmiyor.", düğme "Şifreyi kaydet ve giriş yap"; gönderilen `platform` = `ios`/`android`/`unknown`. **Şifre**: "Merhaba {firstName}. Şifrenizi girin.", "Giriş yap", altta "Şifrenizi unuttuysanız okul yönetiminden şifre sıfırlaması isteyin.". Başarı → `setStudentSession` → `router.replace("/student-home")`. Geri: telefon adımındaysa önceki ekran, değilse telefon adımı. Bilinmeyen hata: "Beklenmeyen bir hata oluştu.". **Yerel "bu telefon başka hesaba bağlı" kontrolü yapılmaz** |
 | `student-home.tsx` | `GET /student/me` | Ekran her odaklandığında (`useFocusEffect`) yüklenir; aşağı çekince yenile. Üstte "Merhaba" + ad soyad, sağda **Çıkış yap** (onay: "Çıkış yap" / "Uygulamadan çıkış yapılsın mı? Tekrar girişte şifreniz sorulur." / "Vazgeç") → oturumu sil → `/`. Durum kartı: Pill "Okulda"/"Dışarıda", sınıf, "Şu anki durum", **"Okuldasınız" / "Okul dışındasınız"**. "Son hareketler": Giriş/Çıkış ikonlu satırlar, kiosk adı veya **"Manuel kayıt"**, tarih-saat (`gg.aa ss:dd`), boşsa "Henüz kayıt yok.". Altta büyük düğme: `needsDirection ? "QR okut" : inside ? "Çıkış için QR okut" : "Giriş için QR okut"`, alt yazı "Kapıdaki ekrana yaklaşın" → `/scan`. `DEVICE_REVOKED` → `clearBinding` + oturumu sil + uyarı "Cihaz bağlantısı kaldırıldı" / "Okul yönetimi bu telefonun bağlantısını kaldırdı. Telefon numaranızla giriş yapıp yeni şifre oluşturabilirsiniz." → `/`. Diğer 401 → oturumu sil → `/student-login`. Diğer hata: mesaj veya "Bilgiler yüklenemedi." |
 | `scan.tsx` | `GET /student/me`, `POST /scan` | Ayrıntı §4.1 |
 | `admin-login.tsx` | `POST /admin/login` | TopBar "Kiosk kurulumu"; başlık "Yönetici girişi", "Bu giriş, cihazı kapıdaki QR ekranına (kiosk) dönüştürür.", InfoBox "Kiosk için Android tablet önerilir: Bluetooth yakınlık doğrulaması yalnızca Android'de yayınlanabilir.", alanlar E-posta + Şifre, "Giriş yap" → `setAdminSession` → `router.replace("/kiosk-select")`. Hata: mesaj veya "Giriş yapılamadı." |
-| `kiosk-select.tsx` | `GET /kiosks` | Üst: logo `İF`, "Kapı Tableti", **Yönetici oturumunu kapat** (danger) → oturumu sil → `/`. Başlık "Kiosk seçin", "Bu tabletin duracağı kapıyı seçin. Ekran QR moduna geçer ve kapanmaz.". Kartlar: kiosk adı, "Giriş · çıkış kiosku", "QR ekranını aç →" → `/kiosk/[id]`. Altta bilgi şeridi "Kiosk QR ile birlikte Bluetooth sinyali yayınlar. Tableti şarja takılı ve Bluetooth açık bırakın." + **Bluetooth testi**. 401 → oturumu sil → `/admin-login`. Hata: "Kiosklar yüklenemedi." |
+| `kiosk-select.tsx` | `GET /kiosks` | Üst: `Logo`, "Kapı Tableti", **Yönetici oturumunu kapat** (danger) → oturumu sil → `/`. Başlık "Kiosk seçin", "Bu tabletin duracağı kapıyı seçin. Ekran QR moduna geçer ve kapanmaz.". Kartlar: kiosk adı, "Giriş · çıkış kiosku", "QR ekranını aç →" → `/kiosk/[id]`. Altta bilgi şeridi "Kiosk QR ile birlikte Bluetooth sinyali yayınlar. Tableti şarja takılı ve Bluetooth açık bırakın." + **Bluetooth testi**. 401 → oturumu sil → `/admin-login`. Hata: "Kiosklar yüklenemedi." |
 | `kiosk/[id].tsx` | `POST /kiosks/:id/start`, `GET /kiosks/:id/feed` | Ayrıntı §4.2 |
 | `ble-debug.tsx` | (`/config` yalnızca UUID için) | Bluetooth durumu, tarama durumu, cihaz sayısı, son kiosk jetonu (kaynak, RSSI, kaç sn önce), sekmeler **Cihazlar** (kiosk olanlar "★ KIOSK" ve en üstte) / **Log**, "Ayrıntılı" anahtarı, "Logu temizle". Sunucuya ulaşılamazsa varsayılan UUID `6f1b0000-5a1e-4c1a-9b9e-fb0000000001` |
 
@@ -180,7 +180,7 @@ Tüm ekranlar `Screen` içinde; üst gezinme `TopBar` (geri oku + küçük başl
 - `useKeepAwake()`. Açılışta `POST /kiosks/:id/start` → `offset = serverTime - Date.now()`, `since = serverTime (ISO)`. 401 → yönetici oturumunu sil → `/admin-login`; diğer hata: mesaj veya "Kiosk başlatılamadı." + Geri.
 - 250 ms'de bir saat; `serverNow = now + offset`, `slot = slotAt(serverNow, slotSeconds)`, `remaining = slotSeconds - (serverNow/1000 % slotSeconds)`. QR = `buildQrPayload(secret, kioskId, slot)` — **cihazda üretilir**, internet kesilse de sürer.
 - Yerleşim: yatay ekranda solda yeşil bilgi paneli + sağda QR; dikeyde üstte panel. Panel: "İzmir Fen" + saat (ss:dd); son okutan yoksa "GİRİŞ · ÇIKIŞ" (yatayda iki satır), kiosk adı, yatayda 3 adım ("Okul uygulamasını açın", "\"QR okut\"a basıp bu kodu okutun", "Adınızı ekranda görünce geçin"); altta "Okul uygulamasını açıp bu kodu okutun. Giriş mi çıkış mı olduğunu sistem bilir.".
-- QR: `react-native-qrcode-svg`, `ecl="M"`, `quietZone={8}`, boyut `min(yatay ? yükseklik*0.6 : genişlik*0.72, 480)`; altında kalan süre çubuğu ve "Kod N sn içinde yenilenecek".
+- QR: `react-native-qrcode-svg`, `ecl="M"`, `quietZone={8}`; boyut QR alanının ölçülen boyutundan (`onLayout`) hesaplanır, alttaki satırlarla çakışmaz (en fazla telefonda 480, tablette 720). Kısa kenarı ≥ 600 olan ekran tablet sayılır: büyük yazılar, adımlar dikeyde de görünür; telefonda yazılar küçülür. Alttaki durum satırı sığmazsa alt satıra kayar. Altında kalan süre çubuğu ve "Kod N sn içinde yenilenecek".
 - Akış: 3 sn'de bir `GET /kiosks/:id/feed?since=` (zaman aşımı 5 sn) → `offset` güncellenir; daha önce gösterilmemiş ilk olay **4 sn** panelde büyük kartta: baş harfler, "Giriş ✓"/"Çıkış ✓", ad soyad, "sınıf · saat". Hata → "Sunucuya ulaşılamıyor" (kırmızı nokta), başarı → "Sunucu bağlantısı var".
 - BLE yayını: her dilimde `KioskBeacon.start(bleServiceUuid, bleToken(secret, kioskId, slot))`; Android 12+ (API ≥ 31) `BLUETOOTH_ADVERTISE` + `BLUETOOTH_CONNECT` izni bir kez istenir. Durum metinleri: `off` "Bluetooth kapalı veya yayın kullanılamıyor" (iOS: "BLE yayını yok"), `starting` "BLE başlatılıyor", `on` "BLE yayını açık", `unsupported` "BLE yayını yok (iOS kiosk)", `error` "BLE hatası: <kod>". Android'de yayın yoksa QR'ın üstünde kırmızı uyarı şeridi. Çıkışta `KioskBeacon.stop()`. Her dilim `bleLog("Kiosk yayında: jeton … (dilim …)")`.
 - Çıkış: sağ altta "Çıkmak için basılı tutun" (1,5 sn uzun basma) → onay "Kiosk modundan çık" / "QR ekranı kapatılsın mı?" → geri.

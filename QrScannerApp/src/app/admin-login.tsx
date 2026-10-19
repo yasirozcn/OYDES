@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Text, useWindowDimensions, View } from "react-native";
-import { Button, ErrorBox, Field, InfoBox, mono, Screen, Title, TopBar } from "@/components/ui";
+import { Button, ErrorBox, Field, InfoBox, Logo, mono, Screen, Title, TopBar } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { useSession } from "@/lib/session";
@@ -63,9 +63,7 @@ export default function AdminLogin() {
       <View style={{ flex: 1, flexDirection: "row" }}>
         <View style={{ width: Math.min(width * 0.42, 520), backgroundColor: colors.brandDark, padding: 40, gap: 28 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: colors.white, fontSize: 17, fontWeight: "800" }}>İF</Text>
-            </View>
+            <Logo />
             <View>
               <Text style={{ fontSize: 15, fontWeight: "700", color: colors.white }}>İzmir Fen</Text>
               <Text style={{ fontSize: 13, color: "#CFE4D6" }}>Kiosk kurulumu</Text>

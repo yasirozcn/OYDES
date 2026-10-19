@@ -76,7 +76,7 @@ Panel (FE) ve uygulama (APP) görevleri, henüz yazılmamış backend parçasın
 | Konu | Referans (Fen Bahçeleri) | Bu proje (İzmir Fen) |
 | --- | --- | --- |
 | Görünen okul adı (panel girişi, panel menüsü, uygulama açılışı, kiosk ekranı, sayfa başlığı) | `Fen Bahçeleri` | `İzmir Fen` |
-| Logo kutusundaki harfler (panel + uygulama) | `FB` | `İF` |
+| Logo kutusundaki harfler (panel + uygulama) | `FB` | panel: `İF` · uygulama: okul logosu (`QrScannerApp/assets/logo.png`, `Logo` bileşeni; uygulama ikonu da bu logo; telefondaki uygulama adı `DOQR`) |
 | `SCHOOL_SHORT_NAME` varsayılanı (WhatsApp mesajı imzası, Türkçe karaktersiz) | `"Fen Bahceleri"` | `"Izmir Fen"` |
 | Panel `<title>` | `Fen Bahçeleri · Giriş-Çıkış Paneli` | `İzmir Fen · Giriş-Çıkış Paneli` |
 | Veritabanı | Yerel Docker (`AdminPanel/docker-compose.yml`, `db:up`, `db:reset`, `db:psql`, `db:import`, `POSTGRESQL_KURULUM.md`, `json-to-postgres.mjs`) | **AWS ortak geliştirme veritabanı** (`infra/dev-db/`, `npm run db:check`). Referanstaki bu yerel veritabanı dosyaları/komutları **bu projeye eklenmez** |
