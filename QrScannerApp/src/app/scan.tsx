@@ -12,7 +12,7 @@ import { getDeviceIdentity } from "@/lib/device";
 import { isOurQr, requestSignature } from "@/lib/protocol";
 import { useSession } from "@/lib/session";
 
-// Öğrencinin QR okutma ekranı: ilk okutmada yön seçimi → kamera (+ kiosk BLE jetonunu dinleme) → sonuç.
+// Öğrencinin QR okutma ekranı: kapıdaki ilk okutmada yön seçimi → kamera (+ kiosk BLE jetonunu dinleme) → sonuç.
 // Yönü, cihaz bağlılığını ve QR geçerliliğini sunucu belirler; ekran yalnızca gönderir ve sonucu gösterir.
 
 type Phase = "scan" | "sending" | "done" | "error";
@@ -38,7 +38,6 @@ export default function Scan() {
   const [result, setResult] = useState<ScanResponse | null>(null);
   const [bleStatus, setBleStatus] = useState<BleStatus>("scanning");
   const [needsDirection, setNeedsDirection] = useState<boolean | null>(null);
-  const [nextDirection, setNextDirection] = useState<Direction | null>(null);
   const [chosenDirection, setChosenDirection] = useState<Direction | null>(null);
   const ble = useRef<Found | null>(null);
   const busy = useRef(false);
@@ -68,7 +67,6 @@ export default function Scan() {
       try {
         const me = await api<MeResponse>("/api/mobile/student/me", { token: studentToken });
         setNeedsDirection(me.needsDirection);
-        setNextDirection(me.nextDirection);
       } catch {
         // Bilgi alınamazsa kamera yine açılır; yön gerekiyorsa sunucu DIRECTION_REQUIRED ile sorar.
         setNeedsDirection(false);
@@ -219,20 +217,19 @@ export default function Scan() {
     return (
       <Screen>
         <TopBar title="İlk okutma" onBack={() => router.back()} />
-        <Text style={[styles.title, { fontSize: 30 }]}>İlk okutmanız</Text>
+        <Text style={[styles.title, { fontSize: 30 }]}>Bu kapıda ilk okutmanız</Text>
         <Text style={[styles.sub, { marginBottom: 24 }]}>
-          Şu an okula mı giriyorsunuz, okuldan mı çıkıyorsunuz? Bunu yalnızca bir kez seçersiniz; sonraki okutmalarda sistem sırayla giriş ve çıkış kaydeder.
+          Şu an içeri mi giriyorsunuz, dışarı mı çıkıyorsunuz? Bunu her kapı için yalnızca bir kez seçersiniz; sonra bu kapıdaki okutmalarda sistem sırayla giriş ve çıkış kaydeder.
         </Text>
         <View style={{ gap: 14 }}>
-          <DirectionCard tone="in" title="Okula giriyorum" onPress={() => setChosenDirection("IN")} />
-          <DirectionCard tone="out" title="Okuldan çıkıyorum" onPress={() => setChosenDirection("OUT")} />
+          <DirectionCard tone="in" title="Giriş yapıyorum" onPress={() => setChosenDirection("IN")} />
+          <DirectionCard tone="out" title="Çıkış yapıyorum" onPress={() => setChosenDirection("OUT")} />
         </View>
         <View style={{ flex: 1 }} />
         <Button title="Vazgeç" variant="ghost" onPress={() => router.back()} />
       </Screen>
     );
 
-  const dir = chosenDirection ?? nextDirection;
   const bleOk = bleStatus === "scanning" || bleStatus === "found";
   const BleIcon = bleOk ? IconBluetooth : IconBluetoothOff;
   const corner = { position: "absolute" as const, width: 44, height: 44, borderColor: colors.white };
@@ -244,11 +241,6 @@ export default function Scan() {
         <Pressable accessibilityRole="button" accessibilityLabel="Geri" hitSlop={8} onPress={() => router.back()} style={{ width: 48, height: 48, marginLeft: -12, alignItems: "center", justifyContent: "center" }}>
           <IconBack size={26} color={colors.white} />
         </Pressable>
-        {dir && (
-          <View style={{ borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, backgroundColor: dir === "IN" ? colors.brand : colors.exit }}>
-            <Text style={{ fontSize: 14, fontWeight: "800", color: colors.white }}>Bu okutma: {dir === "IN" ? "GİRİŞ" : "ÇIKIŞ"}</Text>
-          </View>
-        )}
         <View style={{ width: 36 }} />
       </View>
       <Text style={{ fontSize: 26, lineHeight: 31, fontWeight: "800", letterSpacing: -0.3, color: colors.white }}>Kiosk QR kodunu okutun</Text>

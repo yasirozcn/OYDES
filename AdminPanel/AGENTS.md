@@ -130,7 +130,7 @@ export const GET = handler(async (req: Request) => {
 ### 3.2 Repo fonksiyonları (`src/lib/db/repo.ts`)
 
 **Hazır olanlar** (yeniden yazmayın, yalnızca çağırın):
-`newId, findStudentByPhone, getStudent, listStudents (StudentRow), createStudent, setStudentPassword, getActiveDevice, getActiveDeviceForStudent, BindError, setFirstPasswordAndBindDevice, resetStudentPassword, resetStudentDevice, findAdminByEmail, getAdmin, listKiosks, getKiosk, touchKiosk, createKiosk, setKioskStatus, insertScanAttempt, isReplay, lastEventForStudent, createEventWithWhatsApp, updateWhatsAppMessage, getEvent, reviewEvent, listEvents (EventRow), listScanAttempts (AttemptRow), listKioskAttempts, listWhatsAppMessages, dashboardStats, addAudit, listAudit, dbHealth`.
+`newId, findStudentByPhone, getStudent, listStudents (StudentRow), createStudent, setStudentPassword, getActiveDevice, getActiveDeviceForStudent, BindError, setFirstPasswordAndBindDevice, resetStudentPassword, resetStudentDevice, findAdminByEmail, getAdmin, listKiosks, getKiosk, touchKiosk, createKiosk, setKioskStatus, setKioskWhatsApp, insertScanAttempt, isReplay, lastEventForStudent(studentId, kioskId) (kapı bazında), listDoorPresence (her öğrencinin her kapıdaki son hareketi), createEventWithWhatsApp, updateWhatsAppMessage, getEvent, reviewEvent, listEvents (EventRow), listScanAttempts (AttemptRow), listKioskAttempts, listWhatsAppMessages, dashboardStats, addAudit, listAudit, dbHealth`.
 
 **Eklenen 4 fonksiyon (BE-5)** (referanstaki `repo.ts` ile birebir aynı; ekleme yerleri referanstaki gibi):
 ```ts
@@ -168,7 +168,7 @@ export async function deleteKiosk(id: string): Promise<boolean> {
 | `guardians` | full_name, phone | |
 | `student_guardians` | student_id, guardian_id, relation, notify_entry, notify_exit | PK (student_id, guardian_id); öğrenci silinince CASCADE |
 | `devices` | id = uygulamanın ürettiği deviceId, student_id, platform, device_secret, status `ACTIVE/REVOKED`, bound_at, revoked_at, revoked_by | öğrenci başına tek ACTIVE (kısmi tekil indeks); öğrenci silinince CASCADE |
-| `kiosks` | name, secret (32 bayt hex), status `ACTIVE/DISABLED`, last_seen_at | **yön kolonu yok** |
+| `kiosks` | name, secret (32 bayt hex), status `ACTIVE/DISABLED`, last_seen_at, whatsapp_enabled (varsayılan true; false ise veliye mesaj yazılmaz) | **yön kolonu yok** |
 | `scan_attempts` | device_id, student_id, kiosk_id, time_slot, ble_token, ble_rssi, ble_ok, integrity_ok, result `ACCEPTED/REJECTED`, reject_reason | (device_id, kiosk_id, time_slot) ACCEPTED için tekil; öğrenci/kiosk silinince SET NULL |
 | `attendance_events` | student_id, direction `IN/OUT`, occurred_at, source `APP/MANUAL/OFFLINE`, kiosk_id, scan_attempt_id, review_status `UNREVIEWED/OK/SUSPICIOUS`, reviewed_by, note | öğrenci silinince CASCADE; kiosk silinince SET NULL. `review_status`/`reviewed_by` kullanılmaz (hareket inceleme yok, kök AGENTS.md §0.2): her kayıt `UNREVIEWED` kalır |
 | `wp_messages` | event_id, guardian_id, phone, body, status `QUEUED/SENT/DELIVERED/FAILED/MOCK_SENT`, provider_message_id, attempt_count, sent_at, delivered_at | (event_id, guardian_id) tekil; olay silinince CASCADE |
@@ -189,10 +189,10 @@ Sayfalar sunucu bileşenidir, veriyi doğrudan repo'dan okur ve `export const dy
 | Yol | Dosya | Veri (repo) | İçerik |
 | --- | --- | --- | --- |
 | `/login` | `login/page.tsx` + `LoginForm.tsx` | `getWebAdmin` | Oturum varsa `/`'e yönlendir. Solda koyu tanıtım paneli (geniş ekranda): logo `İF`, "İzmir Fen", "Giriş-Çıkış Yönetim Paneli", büyük başlık "Kim okulda, kim çıktı — tek bakışta.". Sağda "Giriş-Çıkış Yönetim Paneli", "Yönetici hesabınızla giriş yapın.", form: E-posta, Şifre, "Giriş yap" / "Giriş yapılıyor…" |
-| `/` | `(panel)/page.tsx` | `dashboardStats()`, `listEvents({ limit: 15 })` | "Canlı durum" + `<AutoRefresh seconds={10} />`; 4 kart: **Okulda** (`inside`, "`total` öğrenciden", altında doluluk çubuğu), **Dışarıda** (`outside`, "şu an"), **Bugünkü hareket** (`todayEvents`, "bugün"), **Reddedilen okutma** (`rejectedToday`, "bugün"; >0 ise kırmızı kart). "Son hareketler" tablosu + "Tümünü gör →" `/hareketler` |
+| `/` | `(panel)/page.tsx` | `dashboardStats()`, `listEvents({ limit: 15 })`, `listKiosks()`, `listDoorPresence()` | "Canlı durum" + `<AutoRefresh seconds={10} />`; kartlar: her aktif kiosk için bir kart (kiosk adı, o kapıda içerideki öğrenci sayısı, "içeride · `total` öğrenciden", doluluk çubuğu), **Bugünkü hareket** (`todayEvents`, "bugün"), **Reddedilen okutma** (`rejectedToday`, "bugün"; >0 ise kırmızı kart). "Son hareketler" tablosu + "Tümünü gör →" `/hareketler` |
 | `/hareketler` | `(panel)/hareketler/page.tsx` | `listEvents({ limit: 300 })` | Tablo (inceleme düğmesi/filtresi yok, kök AGENTS.md §0.2); manuel/çevrimdışı kayıtta kaynak rozeti; not varsa "Not: …" |
-| `/ogrenciler` | `(panel)/ogrenciler/page.tsx` + `StudentForms.tsx` | `listStudents()` | Tablo (Öğrenci · Telefon · Veli · Durum · Cihaz · İşlemler) + "Yeni öğrenci ekle" formu |
-| `/kiosklar` | `(panel)/kiosklar/page.tsx` + `DeleteKioskButton.tsx` + `AccountForms.tsx` | `listKiosks()`, `listKioskAccounts()` | Kiosk tablosu (Ad · Durum · Son sinyal · Devre dışı bırak/Etkinleştir + Sil), "Yeni kiosk" formu, "Kiosk tablet hesapları" tablosu (Ad · E-posta · şifre sıfırlama formu) + "Yeni kiosk hesabı" formu |
+| `/ogrenciler` | `(panel)/ogrenciler/page.tsx` + `StudentForms.tsx` | `listStudents()`, `listKiosks()`, `listDoorPresence()` | Tablo (Öğrenci · Telefon · Veli · Durum · Cihaz · İşlemler) + "Yeni öğrenci ekle" formu. Durum: her aktif kiosk için kiosk adı + "İçeride"/"Dışarıda"/"Kayıt yok" + **Manuel giriş/çıkış** düğmesi (kayıt yoksa ikisi de) |
+| `/kiosklar` | `(panel)/kiosklar/page.tsx` + `DeleteKioskButton.tsx` + `AccountForms.tsx` | `listKiosks()`, `listKioskAccounts()` | Kiosk tablosu (Ad · Durum · Son sinyal · WhatsApp "Açık"/"Kapalı" + aç/kapat düğmesi (`toggleKioskWhatsAppAction`) · Devre dışı bırak/Etkinleştir + Sil), "Yeni kiosk" formu, "Kiosk tablet hesapları" tablosu (Ad · E-posta · şifre sıfırlama formu) + "Yeni kiosk hesabı" formu |
 | `/denemeler` | `(panel)/denemeler/page.tsx` | `listScanAttempts(true, 300)` | "Reddedilen okutmalar": Zaman · Öğrenci · Kiosk · Neden (kod rozeti + `REJECT_MESSAGES` açıklaması) · BLE ("doğru"/"hatalı" + " · -60 dBm", jeton yoksa "yok") |
 | `/whatsapp` | `(panel)/whatsapp/page.tsx` | `listWhatsAppMessages(300)` | Açıklama: `mock` ise "Test modu: WhatsApp mesajları gerçekten gönderilmez, yalnızca burada ve sunucu konsolunda görünür." değilse "Sağlayıcı: …". Tablo: Zaman · Öğrenci · Telefon · Mesaj · Durum (FAILED kırmızı, QUEUED sarı, diğerleri yeşil) |
 | `/denetim` | `(panel)/denetim/page.tsx` | `listAudit(300)` | Zaman · Kim (`adminName ?? "Öğrenci uygulaması"`) · İşlem · Kayıt (`entity · entityId`) · Ayrıntı (`afterValue` JSON, tek satır kısaltılmış) |
@@ -208,16 +208,17 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | `resetPasswordAction(form)` | `studentId` | `resetStudentPassword` | `PASSWORD_RESET` (student) | `/ogrenciler` | Cihaz bağlı kalır |
 | `resetDeviceAction(form)` | `studentId` | `resetStudentDevice(id, admin.id)` | `DEVICE_RESET` (student) | `/ogrenciler` | Cihaz REVOKED + şifre silinir |
 | `createStudentAction(prev, form)` | `schoolNo, firstName, lastName, className, phone, email (isteğe bağlı), guardianName, guardianPhone` | `createStudent` (telefon `phoneField` ile çevrilir) | `STUDENT_CREATED` (student) `{ phone }` | `/ogrenciler` | Dönüş `{ error?, ok? }`; zod hatası → "Lütfen zorunlu alanları doğru doldurun."; e-posta/telefon tekrarı → Türkçe mesaj; diğer hatalar → "Kayıt oluşturulamadı." (ayrıntı yalnızca sunucu logunda, `[db]`) |
-| `manualEventAction(form)` | `studentId, direction, note` | `getStudent` + `manualEvent` (scan.ts) | `MANUAL_EVENT` (attendance_event) `{ direction, note }` | `/`, `/ogrenciler`, `/hareketler` | Not boşsa "Manuel kayıt"; yön mevcut durumla aynıysa sessizce çık |
+| `manualEventAction(form)` | `studentId, kioskId, direction, note` | `getStudent` + `getKiosk` + `lastEventForStudent` + `manualEvent(studentId, kiosk, direction, note)` (scan.ts) | `MANUAL_EVENT` (attendance_event) `{ direction, kioskId, note }` | `/`, `/ogrenciler`, `/hareketler` | Not boşsa "Manuel kayıt"; yön o kapıdaki durumla aynıysa sessizce çık |
 | `createKioskAction(form)` | `name` | `createKiosk(name)` | `KIOSK_CREATED` (kiosk) `{ name }` | `/kiosklar` | Ad boşsa çık |
 | `toggleKioskAction(form)` | `kioskId, status` | `setKioskStatus` | `KIOSK_STATUS` (kiosk) `{ status }` | `/kiosklar` | |
+| `toggleKioskWhatsAppAction(form)` | `kioskId, whatsappEnabled ("true"/"false")` | `setKioskWhatsApp` | `KIOSK_WHATSAPP` (kiosk) `{ whatsappEnabled }` | `/kiosklar` | Kapalıyken giriş-çıkış kaydı tutulur, veliye mesaj yazılmaz |
 | `deleteKioskAction(form)` | `kioskId` | `getKiosk` + `deleteKiosk` | `KIOSK_DELETED` (kiosk) before `{ name, status }`, after `null` | `/kiosklar` | Kiosk yoksa çık |
 | `createKioskAccountAction(prev, form)` | `fullName, email, password` | `findAdminByEmail` + `createKioskAccount(fullName, email, bcrypt.hash(pw,10))` | `KIOSK_ACCOUNT_CREATED` (admin_user) `{ email }` | `/kiosklar` | zod: "Ad zorunlu.", "Geçerli bir e-posta girin.", "Şifre en az 10 karakter olmalı."; e-posta varsa "Bu e-posta zaten kayıtlı." |
 | `resetKioskAccountPasswordAction(prev, form)` | `accountId, password` | `setKioskAccountPassword` | `KIOSK_ACCOUNT_PASSWORD_RESET` (admin_user) | `/kiosklar` | <10 → "Şifre en az 10 karakter olmalı."; bulunamazsa "Kiosk hesabı bulunamadı." |
 
 `src/app/login/actions.ts`: `loginAction(prev, form)` (audit `WEB_LOGIN`, entity `admin_user`) ve `logoutAction()`.
 
-**Tüm audit işlem adları:** `WEB_LOGIN, KIOSK_LOGIN, KIOSK_START, PASSWORD_CREATED (adminUserId null), PASSWORD_RESET, DEVICE_RESET, STUDENT_CREATED, MANUAL_EVENT, KIOSK_CREATED, KIOSK_STATUS, KIOSK_DELETED, KIOSK_ACCOUNT_CREATED, KIOSK_ACCOUNT_PASSWORD_RESET`. Başka ad uydurulmaz.
+**Tüm audit işlem adları:** `WEB_LOGIN, KIOSK_LOGIN, KIOSK_START, PASSWORD_CREATED (adminUserId null), PASSWORD_RESET, DEVICE_RESET, STUDENT_CREATED, MANUAL_EVENT, KIOSK_CREATED, KIOSK_STATUS, KIOSK_WHATSAPP, KIOSK_DELETED, KIOSK_ACCOUNT_CREATED, KIOSK_ACCOUNT_PASSWORD_RESET`. Başka ad uydurulmaz.
 
 ### 4.3 Tasarım
 
@@ -259,7 +260,7 @@ Tarih/saat gösterimi her yerde `formatDateTime(iso)` (`src/lib/whatsapp.ts`).
 | panel girişi (Server Action) | — | E-posta veya şifre hatalı. · Bu hesap yalnızca kiosk (QR) ekranı içindir; panele giriş yetkisi yok. |
 
 `REJECT_MESSAGES` (`scan.ts`; **WRONG_STATE yok**, kök AGENTS.md §0.2):
-`INVALID_QR` Bu QR kod okul kioskuna ait değil. · `EXPIRED_QR` QR kodun süresi doldu. Ekrandaki güncel kodu okutun. · `UNKNOWN_KIOSK` Kiosk tanınmadı veya devre dışı. · `BAD_SIGNATURE` İstek doğrulanamadı. Uygulamayı güncelleyin veya tekrar giriş yapın. · `DEVICE_NOT_BOUND` Bu cihaz hesabınıza bağlı değil. · `BLE_MISSING` Kiosk Bluetooth sinyali algılanamadı. Bluetooth'u açıp kioska yaklaşın. · `BLE_MISMATCH` Kiosk Bluetooth sinyali doğrulanamadı. Kioska yaklaşıp tekrar deneyin. · `REPLAY` Bu kod bu cihazdan zaten okutuldu. Bir sonraki kodu bekleyin. · `DIRECTION_REQUIRED` İlk okutmanız: giriş mi çıkış mı yaptığınızı seçin.
+`INVALID_QR` Bu QR kod okul kioskuna ait değil. · `EXPIRED_QR` QR kodun süresi doldu. Ekrandaki güncel kodu okutun. · `UNKNOWN_KIOSK` Kiosk tanınmadı veya devre dışı. · `BAD_SIGNATURE` İstek doğrulanamadı. Uygulamayı güncelleyin veya tekrar giriş yapın. · `DEVICE_NOT_BOUND` Bu cihaz hesabınıza bağlı değil. · `BLE_MISSING` Kiosk Bluetooth sinyali algılanamadı. Bluetooth'u açıp kioska yaklaşın. · `BLE_MISMATCH` Kiosk Bluetooth sinyali doğrulanamadı. Kioska yaklaşıp tekrar deneyin. · `REPLAY` Bu kod bu cihazdan zaten okutuldu. Bir sonraki kodu bekleyin. · `DIRECTION_REQUIRED` Bu kapıdaki ilk okutmanız: giriş mi çıkış mı yaptığınızı seçin.
 Öğrenci kaydı aktif değilse `DEVICE_NOT_BOUND` koduyla "Öğrenci kaydı aktif değil." döner.
 
 ### 5.3 `processScan` ayrıntıları (referansla aynı — atlanmaması gerekenler)

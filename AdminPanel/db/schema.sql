@@ -59,8 +59,12 @@ CREATE TABLE IF NOT EXISTS kiosks (
   name         text NOT NULL,
   secret       text NOT NULL,
   status       text NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'DISABLED')),
-  last_seen_at timestamptz
+  last_seen_at timestamptz,
+  whatsapp_enabled boolean NOT NULL DEFAULT true
 );
+-- false ise bu kiosktaki (kapıdaki) giriş-çıkışlar için veliye WhatsApp mesajı gönderilmez.
+-- Aşağıdaki satır eski şemayla kurulmuş veritabanını günceller (tekrar çalıştırılabilir, veri silmez; mevcut kiosklarda açık).
+ALTER TABLE kiosks ADD COLUMN IF NOT EXISTS whatsapp_enabled boolean NOT NULL DEFAULT true;
 
 CREATE TABLE IF NOT EXISTS scan_attempts (
   id            text PRIMARY KEY,

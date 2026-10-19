@@ -200,13 +200,17 @@ export async function touchKiosk(id: string): Promise<void> {
 }
 
 export async function createKiosk(name: string): Promise<Kiosk> {
-  const kiosk: Kiosk = { id: newId("kiosk"), name: name.trim(), secret: randomBytes(32).toString("hex"), status: "ACTIVE", lastSeenAt: null };
+  const kiosk: Kiosk = { id: newId("kiosk"), name: name.trim(), secret: randomBytes(32).toString("hex"), status: "ACTIVE", lastSeenAt: null, whatsappEnabled: true };
   await tx((c) => insertRow(c, "kiosks", kiosk));
   return kiosk;
 }
 
 export async function setKioskStatus(id: string, status: Kiosk["status"]): Promise<void> {
   await q("UPDATE kiosks SET status = $2 WHERE id = $1", [id, status]);
+}
+
+export async function setKioskWhatsApp(id: string, enabled: boolean): Promise<void> {
+  await q("UPDATE kiosks SET whatsapp_enabled = $2 WHERE id = $1", [id, enabled]);
 }
 
 /** Kiosku siler. Geçmiş hareket ve okutma kayıtları korunur (kiosk_id NULL olur, FK ON DELETE SET NULL). */
@@ -242,8 +246,21 @@ export async function isReplay(deviceId: string, kioskId: string, slot: number):
   return rows.length > 0;
 }
 
-export async function lastEventForStudent(studentId: string): Promise<AttendanceEvent | null> {
-  return first(await q<AttendanceEvent>("SELECT * FROM attendance_events WHERE student_id = $1 ORDER BY occurred_at DESC LIMIT 1", [studentId]));
+/** Öğrencinin bu kioskta (kapıda) son hareketi; her kapının giriş-çıkış durumu birbirinden bağımsızdır. */
+export async function lastEventForStudent(studentId: string, kioskId: string): Promise<AttendanceEvent | null> {
+  return first(
+    await q<AttendanceEvent>("SELECT * FROM attendance_events WHERE student_id = $1 AND kiosk_id = $2 ORDER BY occurred_at DESC LIMIT 1", [studentId, kioskId]),
+  );
+}
+
+/** Her öğrencinin her kapıdaki son hareketi (kapısı silinmiş kayıtlar hariç). */
+export function listDoorPresence(): Promise<{ studentId: string; kioskId: string; direction: Direction }[]> {
+  return q(
+    `SELECT DISTINCT ON (student_id, kiosk_id) student_id, kiosk_id, direction
+     FROM attendance_events
+     WHERE kiosk_id IS NOT NULL
+     ORDER BY student_id, kiosk_id, occurred_at DESC`,
+  );
 }
 
 /** Kabul edilen bir giriş/çıkışı kaydeder: olay + öğrenci durumu + veli WhatsApp mesajları tek transaction'da. */
@@ -254,6 +271,8 @@ export async function createEventWithWhatsApp(input: {
   kioskId: string | null;
   scanAttemptId: string | null;
   note?: string | null;
+  /** Kioskun WhatsApp ayarı; false ise veliye mesaj yazılmaz. */
+  notifyGuardians: boolean;
   buildMessage: (student: Student) => string;
 }): Promise<{ event: AttendanceEvent; messages: WhatsAppMessage[] }> {
   return tx(async (c) => {
@@ -277,6 +296,8 @@ export async function createEventWithWhatsApp(input: {
     await c.query("UPDATE students SET presence_status = $2 WHERE id = $1", [student.id, input.direction]);
     student.presenceStatus = input.direction;
 
+    const messages: WhatsAppMessage[] = [];
+    if (!input.notifyGuardians) return { event, messages };
     const guardians = (
       await c.query(
         `SELECT g.id, g.phone FROM student_guardians sg JOIN guardians g ON g.id = sg.guardian_id
@@ -284,7 +305,6 @@ export async function createEventWithWhatsApp(input: {
         [student.id, input.direction],
       )
     ).rows as { id: string; phone: string }[];
-    const messages: WhatsAppMessage[] = [];
     for (const g of guardians) {
       const msg: WhatsAppMessage = {
         id: newId("wpm"),

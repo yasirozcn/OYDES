@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { DirectionBadge, SourceBadge } from "@/components/Badges";
-import { dashboardStats, listEvents } from "@/lib/db/repo";
+import { dashboardStats, listDoorPresence, listEvents, listKiosks } from "@/lib/db/repo";
 import { requireWebAdmin } from "@/lib/session";
 import { formatDateTime } from "@/lib/whatsapp";
 
@@ -9,41 +9,47 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   await requireWebAdmin();
-  const [stats, events] = await Promise.all([dashboardStats(), listEvents({ limit: 15 })]);
+  const [stats, events, kiosks, presence] = await Promise.all([dashboardStats(), listEvents({ limit: 15 }), listKiosks(), listDoorPresence()]);
 
-  const tiles = [
-    { label: "Okulda", value: stats.inside, sub: `${stats.total} öğrenciden`, tone: "text-brand-600" },
-    { label: "Dışarıda", value: stats.outside, sub: "şu an", tone: "text-slate-900" },
-    { label: "Bugünkü hareket", value: stats.todayEvents, sub: "bugün", tone: "text-slate-900" },
-    { label: "Reddedilen okutma", value: stats.rejectedToday, sub: "bugün", tone: stats.rejectedToday ? "text-red-800" : "text-slate-900" },
-  ];
+  // Her kapının giriş-çıkış durumu ayrıdır: kapı başına "içeride" sayısı.
+  const doorTiles = kiosks
+    .filter((k) => k.status === "ACTIVE")
+    .map((k) => ({ label: k.name, inside: presence.filter((p) => p.kioskId === k.id && p.direction === "IN").length }));
+  const rejectedAlert = stats.rejectedToday > 0;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="page-title">Canlı durum</h1>
-          <p className="page-sub">Okuldaki öğrenciler ve son giriş-çıkışlar.</p>
+          <p className="page-sub">Kapılara göre içerideki öğrenciler ve son giriş-çıkışlar.</p>
         </div>
         <AutoRefresh seconds={10} />
       </div>
 
       <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
-        {tiles.map((t, i) => {
-          const alert = i === 3 && stats.rejectedToday > 0;
-          return (
-            <div key={t.label} className={`flex flex-col gap-2 rounded-2xl border p-[18px] ${alert ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"}`}>
-              <div className={`text-sm font-bold ${alert ? "text-red-800" : "text-slate-500"}`}>{t.label}</div>
-              <div className={`text-[40px] leading-none font-bold tabular-nums ${t.tone}`}>{t.value}</div>
-              <div className={`text-sm ${alert ? "text-red-800" : "text-slate-500"}`}>{t.sub}</div>
-              {i === 0 && stats.total > 0 && (
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div className="h-1.5 bg-brand-600" style={{ width: `${Math.round((stats.inside / stats.total) * 100)}%` }} />
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {doorTiles.map((d) => (
+          <div key={d.label} className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-[18px]">
+            <div className="text-sm font-bold text-slate-500">{d.label}</div>
+            <div className="text-[40px] leading-none font-bold text-brand-600 tabular-nums">{d.inside}</div>
+            <div className="text-sm text-slate-500">içeride · {stats.total} öğrenciden</div>
+            {stats.total > 0 && (
+              <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-1.5 bg-brand-600" style={{ width: `${Math.round((d.inside / stats.total) * 100)}%` }} />
+              </div>
+            )}
+          </div>
+        ))}
+        <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-[18px]">
+          <div className="text-sm font-bold text-slate-500">Bugünkü hareket</div>
+          <div className="text-[40px] leading-none font-bold text-slate-900 tabular-nums">{stats.todayEvents}</div>
+          <div className="text-sm text-slate-500">bugün</div>
+        </div>
+        <div className={`flex flex-col gap-2 rounded-2xl border p-[18px] ${rejectedAlert ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"}`}>
+          <div className={`text-sm font-bold ${rejectedAlert ? "text-red-800" : "text-slate-500"}`}>Reddedilen okutma</div>
+          <div className={`text-[40px] leading-none font-bold tabular-nums ${rejectedAlert ? "text-red-800" : "text-slate-900"}`}>{stats.rejectedToday}</div>
+          <div className={`text-sm ${rejectedAlert ? "text-red-800" : "text-slate-500"}`}>bugün</div>
+        </div>
       </div>
 
       <section className="card overflow-hidden rounded-[18px]">

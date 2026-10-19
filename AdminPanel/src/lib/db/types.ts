@@ -56,6 +56,8 @@ export interface Kiosk {
   secret: string;
   status: "ACTIVE" | "DISABLED";
   lastSeenAt: string | null;
+  /** false ise bu kiosktaki giriş-çıkışlar için veliye WhatsApp mesajı gönderilmez. */
+  whatsappEnabled: boolean;
 }
 
 export type RejectReason =

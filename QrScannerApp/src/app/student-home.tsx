@@ -140,7 +140,7 @@ export default function StudentHome() {
           >
             <IconQr size={28} color={colors.white} />
             <View>
-              <Text style={{ fontSize: 19, fontWeight: "700", color: colors.white }}>{data.needsDirection ? "QR okut" : inside ? "Çıkış için QR okut" : "Giriş için QR okut"}</Text>
+              <Text style={{ fontSize: 19, fontWeight: "700", color: colors.white }}>QR okut</Text>
               <Text style={{ fontSize: 13, color: "#CFE4D6" }}>Kapıdaki ekrana yaklaşın</Text>
             </View>
           </Pressable>

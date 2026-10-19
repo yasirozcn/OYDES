@@ -11,7 +11,7 @@ import {
   lastEventForStudent,
   touchKiosk,
 } from "./db/repo";
-import type { AttendanceEvent, Direction, RejectReason } from "./db/types";
+import type { AttendanceEvent, Direction, Kiosk, RejectReason } from "./db/types";
 import { SLOT_TOLERANCE_FUTURE, SLOT_TOLERANCE_PAST, bleToken, currentSlot, parseQrPayload, qrSignature, requestSignature, safeEqual } from "./protocol";
 import { buildWhatsAppBody, dispatchWhatsApp } from "./whatsapp";
 
@@ -24,7 +24,7 @@ export const REJECT_MESSAGES: Record<RejectReason, string> = {
   BLE_MISSING: "Kiosk Bluetooth sinyali algılanamadı. Bluetooth'u açıp kioska yaklaşın.",
   BLE_MISMATCH: "Kiosk Bluetooth sinyali doğrulanamadı. Kioska yaklaşıp tekrar deneyin.",
   REPLAY: "Bu kod bu cihazdan zaten okutuldu. Bir sonraki kodu bekleyin.",
-  DIRECTION_REQUIRED: "İlk okutmanız: giriş mi çıkış mı yaptığınızı seçin.",
+  DIRECTION_REQUIRED: "Bu kapıdaki ilk okutmanız: giriş mi çıkış mı yaptığınızı seçin.",
 };
 
 export type ScanInput = {
@@ -34,7 +34,7 @@ export type ScanInput = {
   ble: { token: string; rssi: number | null } | null;
   timestamp: number;
   signature: string;
-  /** Yalnızca öğrencinin İLK okutmasında kullanılır (önceki kaydı yoksa). Sonrasında sunucu yönü kendisi belirler. */
+  /** Yalnızca öğrencinin bu kapıdaki İLK okutmasında kullanılır (o kapıda kaydı yoksa). Sonrasında sunucu yönü kendisi belirler. */
   direction?: Direction | null;
 };
 
@@ -100,13 +100,13 @@ export async function processScan(input: ScanInput): Promise<ScanResult> {
   // 5) Tekrar oynatma (aynı cihaz + aynı kiosk + aynı dilim)
   if (await isReplay(input.deviceId, kiosk.id, qr.slot)) return reject("REPLAY");
 
-  // 6) Yön: kiosk yönsüzdür.
-  //    - Hiç kaydı olmayan öğrenci (ilk okutma) yönü uygulamada seçer → input.direction.
-  //    - Sonrasında yön otomatik: okuldaysa ÇIKIŞ, dışarıdaysa GİRİŞ (presenceStatus'un tersi).
-  //    - Son kayıttan sonra duplicateWindowSeconds içinde tekrar okutma yeni kayıt açmaz (çift okutma koruması).
+  // 6) Yön: kiosk yönsüzdür ve her kiosk (kapı) kendi giriş-çıkış durumunu tutar.
+  //    - Bu kapıda kaydı olmayan öğrenci (kapıdaki ilk okutma) yönü uygulamada seçer → input.direction.
+  //    - Sonrasında yön otomatik: bu kapıdaki son hareket girişse ÇIKIŞ, çıkışsa GİRİŞ.
+  //    - Bu kapıdaki son kayıttan sonra duplicateWindowSeconds içinde tekrar okutma yeni kayıt açmaz (çift okutma koruması).
   const student = await getStudent(input.studentId);
   if (!student || !student.isActive) return reject("DEVICE_NOT_BOUND", "Öğrenci kaydı aktif değil.");
-  const last = await lastEventForStudent(student.id);
+  const last = await lastEventForStudent(student.id, kiosk.id);
   const studentName = `${student.firstName} ${student.lastName}`;
 
   if (last && Date.now() - Date.parse(last.occurredAt) < config.duplicateWindowSeconds * 1000) {
@@ -116,7 +116,7 @@ export async function processScan(input: ScanInput): Promise<ScanResult> {
     return { ok: true, duplicate: true, event: last, studentName, bleOk: base.bleOk };
   }
   let direction: Direction;
-  if (last) direction = student.presenceStatus === "IN" ? "OUT" : "IN";
+  if (last) direction = last.direction === "IN" ? "OUT" : "IN";
   else if (input.direction) direction = input.direction;
   else {
     // Hile denemesi değil; kaydedilmez. Uygulama yön sorup aynı/yeni QR ile tekrar gönderir.
@@ -136,24 +136,26 @@ export async function processScan(input: ScanInput): Promise<ScanResult> {
     source: "APP",
     kioskId: kiosk.id,
     scanAttemptId: attempt.id,
-    buildMessage: (s) => buildWhatsAppBody(s, direction, occurredAt),
+    notifyGuardians: kiosk.whatsappEnabled,
+    buildMessage: (s) => buildWhatsAppBody(s, direction, occurredAt, kiosk.name),
   });
-  // WhatsApp gönderimi yanıtı bekletmesin.
+  // WhatsApp gönderimi yanıtı bekletmesin (kioskta WhatsApp kapalıysa mesaj listesi boştur).
   void dispatchWhatsApp(messages);
   return { ok: true, duplicate: false, event, studentName, bleOk: base.bleOk };
 }
 
-/** Panelden manuel giriş/çıkış (telefonu unutan öğrenci vb.). */
-export async function manualEvent(studentId: string, direction: Direction, note: string): Promise<AttendanceEvent> {
+/** Panelden bir kapı için manuel giriş/çıkış (telefonu unutan öğrenci vb.). */
+export async function manualEvent(studentId: string, kiosk: Kiosk, direction: Direction, note: string): Promise<AttendanceEvent> {
   const occurredAt = new Date().toISOString();
   const { event, messages } = await createEventWithWhatsApp({
     studentId,
     direction,
     source: "MANUAL",
-    kioskId: null,
+    kioskId: kiosk.id,
     scanAttemptId: null,
     note,
-    buildMessage: (s) => buildWhatsAppBody(s, direction, occurredAt),
+    notifyGuardians: kiosk.whatsappEnabled,
+    buildMessage: (s) => buildWhatsAppBody(s, direction, occurredAt, kiosk.name),
   });
   void dispatchWhatsApp(messages);
   return event;

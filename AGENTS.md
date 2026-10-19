@@ -110,7 +110,7 @@ Panel (FE) ve uygulama (APP) görevleri, henüz yazılmamış backend parçasın
 3. Sunucu okutmayı doğrular, **giriş veya çıkış** kaydı açar ve veliye WhatsApp mesajı kaydı oluşturur.
 4. Okul yönetimi **web panelinden** öğrencileri, cihazları, kayıtları ve reddedilen okutmaları izler.
 
-**Tek kiosk, yönsüz QR:** Kioskun giriş/çıkış ayrımı yoktur. Öğrencinin **ilk** okutmasında uygulama "Giriş mi, çıkış mı?" diye sorar; sonraki her okutmada yönü **sunucu** belirler (okuldaysa çıkış, dışarıdaysa giriş).
+**Yönsüz QR, kapı bazında durum:** Kioskun giriş/çıkış ayrımı yoktur. Birden fazla kapıya (ana kapı, yurt kapısı …) ayrı kiosk konabilir ve **her kioskun giriş-çıkış durumu birbirinden bağımsızdır**. Öğrencinin bir kiosktaki **ilk** okutmasında uygulama "Giriş mi, çıkış mı?" diye sorar; o kiosktaki sonraki her okutmada yönü **sunucu** belirler (o kapıda içerideyse çıkış, dışarıdaysa giriş).
 
 ## 2. Mimari
 
@@ -239,7 +239,7 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 | `POST /student/check-phone` | — | `{ phone, deviceId }` | `{ next: "create-password" \| "password", firstName }` · Hatalar: `404 NOT_FOUND`, `409 DEVICE_TAKEN` (bu telefon başka öğrenciye bağlı), `403 WRONG_DEVICE` (hesap başka telefona bağlı) |
 | `POST /student/set-password` | — | `{ phone, password (≥8), deviceId, deviceSecret (64 hex), platform: "ios"\|"android"\|"web"\|"unknown" }` | `{ token, student: { id, firstName, lastName, className } }` · Hatalar: `409 ALREADY_HAS_PASSWORD`, `409 DEVICE_TAKEN`, `403 WRONG_DEVICE`, `404 NOT_FOUND` |
 | `POST /student/login` | — | `{ phone, password, deviceId }` | `{ token, student }` · `401 BAD_CREDENTIALS`, `403 WRONG_DEVICE` |
-| `GET /student/me` | öğrenci | — | `{ student: {…, presenceStatus: "IN"\|"OUT"}, needsDirection: boolean, nextDirection: "IN"\|"OUT"\|null, events: [{ id, direction, occurredAt, kioskName }] }` (son 10) · `401 DEVICE_REVOKED` |
+| `GET /student/me` | öğrenci | — | `{ student: {…, presenceStatus: "IN"\|"OUT"}, needsDirection: boolean, nextDirection: "IN"\|"OUT"\|null, events: [{ id, direction, occurredAt, kioskName }] }` (son 10) · `presenceStatus` öğrencinin herhangi bir kapıdaki son hareketidir; `needsDirection` yalnızca hiç kaydı yokken `true` (başka bir kapıdaki ilk okutmada sunucu `DIRECTION_REQUIRED` döner) · `401 DEVICE_REVOKED` |
 | `POST /scan` | öğrenci | `{ qr, ble: { token, rssi } \| null, timestamp, signature, direction?: "IN"\|"OUT"\|null }` | `{ eventId, direction, occurredAt, time: "HH:mm", duplicate, studentName, bleVerified: boolean\|null }` · Red: `422 { code: <RejectReason> }` |
 | `POST /admin/login` | — | `{ email, password }` | `{ token, admin: { id, fullName } }` — ADMIN veya KIOSK rolü |
 | `GET /kiosks` | kiosk-admin | — | `{ kiosks: [{ id, name }] }` (yalnızca aktifler) |
@@ -282,18 +282,19 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 3. Dilim tazeliği (−2…+1) → `EXPIRED_QR`
 4. BLE: jeton geldiyse eşleşme kontrolü (`ble_ok`); `BLE_REQUIRED=true` ise jeton yok → `BLE_MISSING`, eşleşmiyor → `BLE_MISMATCH`
 5. Aynı cihaz + kiosk + dilim daha önce **kabul** edildiyse → `REPLAY` (veritabanında kısmi tekil indeksle de korunur)
-6. **Yön**:
-   - Son kayıttan bu yana `DUPLICATE_WINDOW_SECONDS` (varsayılan 120) geçmediyse → **çift okutma**: yeni kayıt/WhatsApp mesajı yok, `duplicate: true` ile son kayıt döner.
-   - Öğrencinin hiç kaydı yoksa yön istekteki `direction`'dır; yoksa `422 DIRECTION_REQUIRED` (bu durum **kaydedilmez**).
-   - Kaydı varsa yön = `presenceStatus`'un tersi (IN → OUT, OUT → IN). İstekteki `direction` **yok sayılır**.
+6. **Yön** (her kiosk/kapı ayrı; yalnızca öğrencinin **bu kiosktaki** kayıtlarına bakılır):
+   - Bu kiosktaki son kayıttan bu yana `DUPLICATE_WINDOW_SECONDS` (varsayılan 120) geçmediyse → **çift okutma**: yeni kayıt/WhatsApp mesajı yok, `duplicate: true` ile son kayıt döner.
+   - Öğrencinin bu kioskta hiç kaydı yoksa yön istekteki `direction`'dır; yoksa `422 DIRECTION_REQUIRED` (bu durum **kaydedilmez**).
+   - Bu kioskta kaydı varsa yön = o kiosktaki son hareketin tersi (IN → OUT, OUT → IN). İstekteki `direction` **yok sayılır**.
+   - `students.presence_status` öğrencinin herhangi bir kapıdaki son hareketini tutar (uygulamadaki durum kartı); yön kararında kullanılmaz.
 7. Kabul: tek transaction'da `attendance_events` + `students.presence_status` + her veliye `wp_messages` (bir olay için bir veliye tek WhatsApp mesajı).
 
-**WhatsApp**: veli bildirimleri SMS değil WhatsApp mesajıdır. 1. aşamada gerçek gönderim yok (`WHATSAPP_PROVIDER=mock`): mesaj kaydedilir, durumu `MOCK_SENT` olur. Metin: `Sayin Veli, <Ad Soyad> <HH:mm>'de okula giris yapti. - <Okul>`.
+**WhatsApp**: veli bildirimleri SMS değil WhatsApp mesajıdır. 1. aşamada gerçek gönderim yok (`WHATSAPP_PROVIDER=mock`): mesaj kaydedilir, durumu `MOCK_SENT` olur. Metin: `Sayin Veli, <Ad Soyad> <HH:mm>'de okula giris yapti (<Kiosk adı>). - <Okul>`. Her kioskun **WhatsApp bildirimi** ayrı açılıp kapatılır (`kiosks.whatsapp_enabled`, varsayılan açık); kapalı kioskta giriş-çıkış yine kaydedilir, yalnızca veliye mesaj yazılmaz (manuel kayıtlar da seçilen kioskun ayarına uyar).
 
-**Panelden manuel giriş/çıkış**: telefonu olmayan öğrenci için; `source = MANUAL`, aynı WhatsApp kuralları. Yön öğrencinin mevcut durumuyla aynıysa (okuldayken "giriş") hiçbir şey yapılmaz.
+**Panelden manuel giriş/çıkış**: telefonu olmayan öğrenci için; **kapı (kiosk) seçilerek** yapılır, `source = MANUAL`, `kiosk_id` = seçilen kapı, aynı WhatsApp kuralları. Yön öğrencinin o kapıdaki durumuyla aynıysa (içerideyken "giriş") hiçbir şey yapılmaz.
 
 **Kiosklar ve kiosk tablet hesapları** (panel → Kiosklar)
-- Kiosk eklenir (yalnızca ad; gizli anahtarı sunucu üretir), devre dışı bırakılır/etkinleştirilir veya **kalıcı silinir**. Silinen kioskun geçmiş hareket ve okutma kayıtları korunur (`kiosk_id` NULL olur, FK `ON DELETE SET NULL`).
+- Kiosk eklenir (yalnızca ad; gizli anahtarı sunucu üretir), WhatsApp bildirimi açılır/kapatılır, devre dışı bırakılır/etkinleştirilir veya **kalıcı silinir**. Silinen kioskun geçmiş hareket ve okutma kayıtları korunur (`kiosk_id` NULL olur, FK `ON DELETE SET NULL`).
 - **Kiosk tablet hesabı** = `admin_users` tablosunda `role = 'KIOSK'` olan kullanıcı. Tablette "Yönetici girişi" ile kullanılır, **web paneline giremez**. Panelden yeni hesap açılır (ad, e-posta, şifre **≥ 10** karakter) ve şifresi sıfırlanır (eski şifre gösterilmez; yalnızca yenisi verilir). Tablette açık oturum (180 günlük token) şifre değişince düşmez; bir sonraki girişte yeni şifre gerekir.
 - `ADMIN` rolündeki hesaplar panelden oluşturulmaz; yalnızca `npm run admin:create` ile.
 

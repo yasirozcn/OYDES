@@ -45,3 +45,6 @@ yarn-error.*
 
 # derlenen APK
 *.apk
+
+# Yerel modül derleme çıktısı (APK derlerken oluşur)
+modules/*/android/build/

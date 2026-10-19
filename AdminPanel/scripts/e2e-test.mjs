@@ -20,7 +20,9 @@ const otherStudent = { id: `stu_${hex(8)}`, phone: testPhone() };
 const guardianId = `gua_${hex(8)}`;
 const kiosk = { id: `kiosk_${hex(8)}`, name: `TEST e2e-${suffix}`, secret: hex(32) };
 const disabledKiosk = { id: `kiosk_${hex(8)}`, name: `TEST e2e-${suffix} kapali` };
-const kioskIds = [kiosk.id, disabledKiosk.id];
+// İkinci kapı: giriş-çıkış durumu birinci kapıdan bağımsız olmalı; WhatsApp bildirimi kapalı.
+const secondDoor = { id: `kiosk_${hex(8)}`, name: `TEST e2e-${suffix} yurt`, secret: hex(32) };
+const kioskIds = [kiosk.id, disabledKiosk.id, secondDoor.id];
 const kioskAccount = { id: `adm_${hex(8)}`, email: `test+e2e-${suffix}-kiosk@izmirfen.test`, password: hex(12) };
 const device = { id: `e2e-${suffix}-phone-1`, secret: hex(32) };
 const secondDeviceId = `e2e-${suffix}-phone-2`;
@@ -51,8 +53,8 @@ async function call(method, path, payload, token) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Mobil uygulamanın okutma isteği: QR + kioskun BLE jetonu + cihaz anahtarıyla imza.
-function scan(token, slot, { qr = buildQrPayload(kiosk.secret, kiosk.id, slot), direction, deviceSecret = device.secret } = {}) {
-  const ble = { token: bleToken(kiosk.secret, kiosk.id, slot), rssi: -60 };
+function scan(token, slot, { door = kiosk, qr = buildQrPayload(door.secret, door.id, slot), direction, deviceSecret = device.secret } = {}) {
+  const ble = { token: bleToken(door.secret, door.id, slot), rssi: -60 };
   const timestamp = Date.now();
   return call("POST", "/scan", { qr, ble, timestamp, signature: requestSignature(deviceSecret, qr, ble.token, timestamp), direction }, token);
 }
@@ -61,7 +63,7 @@ function scan(token, slot, { qr = buildQrPayload(kiosk.secret, kiosk.id, slot), 
 async function eventMessages(eventId) {
   let rows = [];
   for (let i = 0; i < 20; i++) {
-    ({ rows } = await db.query("SELECT status, attempt_count, sent_at FROM wp_messages WHERE event_id = $1", [eventId]));
+    ({ rows } = await db.query("SELECT status, attempt_count, sent_at, body FROM wp_messages WHERE event_id = $1", [eventId]));
     if (rows.length && rows.every((m) => m.status !== "QUEUED")) break;
     await sleep(250);
   }
@@ -76,13 +78,17 @@ async function createTestData() {
   );
   await db.query("INSERT INTO guardians (id, full_name, phone) VALUES ($1, 'E2E Veli', '+900000000000')", [guardianId]);
   await db.query("INSERT INTO student_guardians (student_id, guardian_id) VALUES ($1, $2)", [student.id, guardianId]);
-  await db.query("INSERT INTO kiosks (id, name, secret, status) VALUES ($1, $2, $3, 'ACTIVE'), ($4, $5, $6, 'DISABLED')", [
+  await db.query(`INSERT INTO kiosks (id, name, secret, status, whatsapp_enabled)
+     VALUES ($1, $2, $3, 'ACTIVE', true), ($4, $5, $6, 'DISABLED', true), ($7, $8, $9, 'ACTIVE', false)`, [
     kiosk.id,
     kiosk.name,
     kiosk.secret,
     disabledKiosk.id,
     disabledKiosk.name,
     hex(32),
+    secondDoor.id,
+    secondDoor.name,
+    secondDoor.secret,
   ]);
   await db.query("INSERT INTO admin_users (id, full_name, email, role, password_hash) VALUES ($1, $2, $3, 'KIOSK', $4)", [
     kioskAccount.id,
@@ -323,6 +329,18 @@ async function run() {
   check("scan: presence_status = OUT", (await presence()) === "OUT");
   msgs = await eventMessages(r.data?.eventId);
   check("scan: çıkışta da veliye bir WhatsApp mesajı MOCK_SENT", msgs.length === 1 && msgs[0].status === "MOCK_SENT", msgs);
+  check("scan: WhatsApp mesajında kapı adı", msgs[0]?.body.includes(`(${kiosk.name})`), msgs);
+
+  // ---- kapılar bağımsız: ikinci kapıdaki ilk okutma yön ister; birinci kapının durumu ve çift okutma penceresi onu etkilemez
+  const doorSlot = currentSlot();
+  r = await scan(studentToken, doorSlot, { door: secondDoor });
+  check("scan: ikinci kapıda ilk okutma (birinci kapıda kayıt var) → 422 DIRECTION_REQUIRED", r.status === 422 && r.data.code === "DIRECTION_REQUIRED", r);
+  r = await scan(studentToken, doorSlot, { door: secondDoor, direction: "IN" });
+  check("scan: ikinci kapı direction IN → giriş (birinci kapı OUT, çift okutma sayılmaz)", r.status === 200 && r.data.direction === "IN" && r.data.duplicate === false, r);
+  const doorEvent = await db.query("SELECT kiosk_id FROM attendance_events WHERE id = $1", [r.data?.eventId]);
+  check("scan: ikinci kapının kaydı kendi kioskunda", doorEvent.rows[0]?.kiosk_id === secondDoor.id, doorEvent.rows[0]);
+  const doorMessages = await db.query("SELECT count(*)::int AS n FROM wp_messages WHERE event_id = $1", [r.data?.eventId]);
+  check("scan: WhatsApp'ı kapalı kioskta veliye mesaj yazılmadı", doorMessages.rows[0].n === 0, doorMessages.rows[0]);
 
   // Feed'de görünecek bir hareket ve bir okutma denemesi (öğrenci ve cihazla birlikte temizlenir).
   const eventId = `evt_${hex(8)}`;

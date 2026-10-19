@@ -1,5 +1,6 @@
-// Öğrenciler: liste (sınıf + soyada göre), cihaz/şifre sıfırlama, manuel giriş-çıkış ve yeni öğrenci formu.
-import { listStudents } from "@/lib/db/repo";
+// Öğrenciler: liste (sınıf + soyada göre), kapı bazında durum + manuel giriş-çıkış, cihaz/şifre sıfırlama ve yeni öğrenci formu.
+import { listDoorPresence, listKiosks, listStudents } from "@/lib/db/repo";
+import type { Direction, Kiosk } from "@/lib/db/types";
 import { requireWebAdmin } from "@/lib/session";
 import { formatDateTime } from "@/lib/whatsapp";
 import { manualEventAction, resetDeviceAction, resetPasswordAction } from "../actions";
@@ -9,7 +10,9 @@ export const dynamic = "force-dynamic";
 
 export default async function StudentsPage() {
   await requireWebAdmin();
-  const students = await listStudents();
+  const [students, kiosks, presence] = await Promise.all([listStudents(), listKiosks(), listDoorPresence()]);
+  const doors = kiosks.filter((k) => k.status === "ACTIVE");
+  const doorStatus = (studentId: string, kioskId: string) => presence.find((p) => p.studentId === studentId && p.kioskId === kioskId)?.direction ?? null;
   return (
     <div className="space-y-6">
       <div>
@@ -51,7 +54,12 @@ export default async function StudentsPage() {
                   ))}
                 </td>
                 <td>
-                  {s.presenceStatus === "IN" ? <span className="badge bg-emerald-50 text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-600" />Okulda</span> : <span className="badge bg-slate-100 text-slate-500"><span className="h-2 w-2 rounded-full border-2 border-slate-400" />Dışarıda</span>}
+                  <div className="space-y-1.5">
+                    {doors.length === 0 && <span className="text-xs text-slate-400">Kiosk yok</span>}
+                    {doors.map((k) => (
+                      <DoorStatus key={k.id} studentId={s.id} kiosk={k} status={doorStatus(s.id, k.id)} />
+                    ))}
+                  </div>
                 </td>
                 <td className="text-xs">
                   {s.activeDevice ? (
@@ -82,14 +90,6 @@ export default async function StudentsPage() {
                         </button>
                       </form>
                     )}
-                    <form action={manualEventAction} className="flex gap-1">
-                      <input type="hidden" name="studentId" value={s.id} />
-                      <input type="hidden" name="direction" value={s.presenceStatus === "IN" ? "OUT" : "IN"} />
-                      <input type="hidden" name="note" value="Panelden manuel kayıt" />
-                      <button className="btn btn-secondary" title="Telefonunu unutan öğrenci için">
-                        Manuel {s.presenceStatus === "IN" ? "çıkış" : "giriş"}
-                      </button>
-                    </form>
                   </div>
                 </td>
               </tr>
@@ -102,6 +102,30 @@ export default async function StudentsPage() {
         <h2 className="mb-4 text-lg font-bold">Yeni öğrenci ekle</h2>
         <AddStudentForm />
       </section>
+    </div>
+  );
+}
+
+// Bir kapıdaki durum + manuel kayıt düğmesi. Kapıda hiç kaydı yoksa hem giriş hem çıkış seçilebilir.
+function DoorStatus({ studentId, kiosk, status }: { studentId: string; kiosk: Pick<Kiosk, "id" | "name">; status: Direction | null }) {
+  const directions: Direction[] = status === "IN" ? ["OUT"] : status === "OUT" ? ["IN"] : ["IN", "OUT"];
+  return (
+    <div className="flex items-center gap-2 text-xs whitespace-nowrap">
+      <span className="font-bold text-slate-700">{kiosk.name}</span>
+      {status === "IN" && <span className="badge bg-emerald-50 text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-600" />İçeride</span>}
+      {status === "OUT" && <span className="badge bg-slate-100 text-slate-500"><span className="h-2 w-2 rounded-full border-2 border-slate-400" />Dışarıda</span>}
+      {status === null && <span className="badge bg-slate-100 text-slate-400">Kayıt yok</span>}
+      {directions.map((direction) => (
+        <form key={direction} action={manualEventAction}>
+          <input type="hidden" name="studentId" value={studentId} />
+          <input type="hidden" name="kioskId" value={kiosk.id} />
+          <input type="hidden" name="direction" value={direction} />
+          <input type="hidden" name="note" value="Panelden manuel kayıt" />
+          <button className="btn btn-secondary h-7 px-2 text-xs" title="Telefonunu unutan öğrenci için">
+            Manuel {direction === "IN" ? "giriş" : "çıkış"}
+          </button>
+        </form>
+      ))}
     </div>
   );
 }

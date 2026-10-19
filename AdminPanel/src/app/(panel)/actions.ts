@@ -13,10 +13,12 @@ import {
   findAdminByEmail,
   getKiosk,
   getStudent,
+  lastEventForStudent,
   resetStudentDevice,
   resetStudentPassword,
   setKioskAccountPassword,
   setKioskStatus,
+  setKioskWhatsApp,
 } from "@/lib/db/repo";
 import { phoneField } from "@/lib/phone";
 import { manualEvent } from "@/lib/scan";
@@ -84,10 +86,13 @@ export async function manualEventAction(form: FormData) {
   const admin = await requireWebAdmin();
   const direction = form.get("direction") === "IN" ? "IN" : "OUT";
   const note = String(form.get("note") ?? "").trim() || "Manuel kayıt";
-  const student = await getStudent(String(form.get("studentId")));
-  if (!student || student.presenceStatus === direction) return;
-  const event = await manualEvent(student.id, direction, note);
-  await addAudit({ adminUserId: admin.id, action: "MANUAL_EVENT", entity: "attendance_event", entityId: event.id, beforeValue: null, afterValue: { direction, note } });
+  const [student, kiosk] = await Promise.all([getStudent(String(form.get("studentId"))), getKiosk(String(form.get("kioskId")))]);
+  if (!student || !kiosk) return;
+  // Her kapının durumu ayrıdır: bu kapıda zaten aynı yöndeyse (içerideyken "giriş") bir şey yapılmaz.
+  const last = await lastEventForStudent(student.id, kiosk.id);
+  if (last?.direction === direction) return;
+  const event = await manualEvent(student.id, kiosk, direction, note);
+  await addAudit({ adminUserId: admin.id, action: "MANUAL_EVENT", entity: "attendance_event", entityId: event.id, beforeValue: null, afterValue: { direction, kioskId: kiosk.id, note } });
   revalidatePath("/");
   revalidatePath("/ogrenciler");
   revalidatePath("/hareketler");
@@ -110,6 +115,16 @@ export async function toggleKioskAction(form: FormData) {
   if (status !== "ACTIVE" && status !== "DISABLED") return;
   await setKioskStatus(kioskId, status);
   await addAudit({ adminUserId: admin.id, action: "KIOSK_STATUS", entity: "kiosk", entityId: kioskId, beforeValue: null, afterValue: { status } });
+  revalidatePath("/kiosklar");
+}
+
+// Kioskun veli WhatsApp bildirimini açar/kapatır; kapalıyken giriş-çıkış kaydı yine tutulur, yalnızca mesaj gitmez.
+export async function toggleKioskWhatsAppAction(form: FormData) {
+  const admin = await requireWebAdmin();
+  const kioskId = String(form.get("kioskId"));
+  const whatsappEnabled = form.get("whatsappEnabled") === "true";
+  await setKioskWhatsApp(kioskId, whatsappEnabled);
+  await addAudit({ adminUserId: admin.id, action: "KIOSK_WHATSAPP", entity: "kiosk", entityId: kioskId, beforeValue: null, afterValue: { whatsappEnabled } });
   revalidatePath("/kiosklar");
 }
 

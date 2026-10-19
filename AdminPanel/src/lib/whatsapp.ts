@@ -13,10 +13,9 @@ export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "medium", timeZone: config.timeZone }).format(new Date(iso));
 }
 
-export function buildWhatsAppBody(student: Student, direction: Direction, occurredAtIso: string, note?: string | null): string {
+export function buildWhatsAppBody(student: Student, direction: Direction, occurredAtIso: string, kioskName: string): string {
   const action = direction === "IN" ? "okula giris yapti" : "okuldan cikis yapti";
-  const extra = note ? ` (${note})` : "";
-  return `Sayin Veli, ${student.firstName} ${student.lastName} ${formatTime(occurredAtIso)}'de ${action}${extra}. - ${config.schoolShortName}`;
+  return `Sayin Veli, ${student.firstName} ${student.lastName} ${formatTime(occurredAtIso)}'de ${action} (${kioskName}). - ${config.schoolShortName}`;
 }
 
 async function sendViaProvider(msg: WhatsAppMessage): Promise<{ ok: boolean; providerMessageId?: string }> {
