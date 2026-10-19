@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { IconArrowRight, IconBluetooth, IconQr } from "@/components/icons";
-import { Button, ErrorBox, Screen, Title } from "@/components/ui";
+import { Button, ErrorBox, Logo, Screen, Title } from "@/components/ui";
 import { api, ApiError, type KioskInfo } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { useSession } from "@/lib/session";
@@ -32,9 +32,7 @@ export default function KioskSelect() {
   return (
     <Screen>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 24 }}>
-        <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: colors.white, fontSize: 17, fontWeight: "800" }}>İF</Text>
-        </View>
+        <Logo />
         <Text style={{ flex: 1, fontSize: 15, fontWeight: "700", color: colors.ink }}>Kapı Tableti</Text>
         <Button
           title="Yönetici oturumunu kapat"
@@ -87,7 +85,6 @@ export default function KioskSelect() {
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 16, padding: 14, borderRadius: 18, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line }}>
         <IconBluetooth size={22} color={colors.brand} />
         <Text style={{ flex: 1, fontSize: 14, lineHeight: 20, color: colors.inkSoft }}>Kiosk QR ile birlikte Bluetooth sinyali yayınlar. Tableti şarja takılı ve Bluetooth açık bırakın.</Text>
-        <Button title="Bluetooth testi" variant="secondary" onPress={() => router.push("/ble-debug")} style={{ minHeight: 44, borderRadius: 12 }} />
       </View>
     </Screen>
   );

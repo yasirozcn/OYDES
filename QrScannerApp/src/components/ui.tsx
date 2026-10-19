@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconBack } from "./icons";
 import { colors } from "@/lib/config";
@@ -14,6 +14,15 @@ export function Screen({ children, style, padded = true }: { children?: React.Re
     <SafeAreaView style={[styles.screen, style]} edges={["top", "bottom", "left", "right"]}>
       <View style={[{ flex: 1 }, padded && { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 20 }]}>{children}</View>
     </SafeAreaView>
+  );
+}
+
+// Okul logosu: beyaz, köşeleri yuvarlatılmış kutuda (yeşil zeminde de okunur).
+export function Logo({ size = 44 }: { size?: number }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.lineSoft, alignItems: "center", justifyContent: "center" }}>
+      <Image source={require("../../assets/logo.png")} style={{ width: size * 0.72, height: size * 0.72 }} resizeMode="contain" accessibilityLabel="İzmir Fen logosu" />
+    </View>
   );
 }
 

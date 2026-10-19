@@ -1,7 +1,7 @@
 import { useKeepAwake } from "expo-keep-awake";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, PermissionsAndroid, Platform, Pressable, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, PermissionsAndroid, Platform, Pressable, Text, useWindowDimensions, View, type LayoutRectangle } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { KioskBeacon } from "@modules/kiosk-beacon";
 import { IconBluetoothOff, IconCheck } from "@/components/icons";
@@ -16,6 +16,12 @@ import { useSession } from "@/lib/session";
 // QR ve jeton bu cihazda, sunucuyla paylaşılan gizli anahtardan hesaplanır; ekran internet kesilse bile kod üretmeye devam eder.
 
 type BleState = "off" | "starting" | "on" | "unsupported" | "error";
+
+// Kısa kenarı bundan küçük ekranlar telefon sayılır; tablette yazılar ve QR büyür.
+const TABLET_MIN_SIDE = 600;
+// QR'ın altındaki süre çubuğu + "Kod N sn…" satırı ve QR çerçevesinin iç boşluğu/kenarlığı.
+const QR_FOOTER_HEIGHT = 56;
+const QR_FRAME = 48;
 
 // Android 12+ (API 31) yayın için "Yakındaki cihazlar" izni ister; daha eskilerde izin gerekmez.
 async function ensureAdvertisePermission(): Promise<boolean> {
@@ -37,6 +43,7 @@ export default function KioskScreen() {
   const [last, setLast] = useState<KioskFeed["events"][number] | null>(null);
   const [offset, setOffset] = useState(0); // sunucu saati - cihaz saati
   const [ble, setBle] = useState<BleState>("off");
+  const [qrArea, setQrArea] = useState<LayoutRectangle | null>(null);
   const advertisePermission = useRef<boolean | null>(null);
   const sinceRef = useRef<string | null>(null);
   const shownIds = useRef(new Set<string>());
@@ -167,7 +174,10 @@ export default function KioskScreen() {
     );
 
   const landscape = width > height;
-  const qrSize = Math.min(landscape ? height * 0.6 : width * 0.72, 480);
+  const tablet = Math.min(width, height) >= TABLET_MIN_SIDE;
+  // QR, kendisine kalan alanın tamamına sığacak kadar büyük olur (telefonda alttaki satırlarla çakışmaz, tablette ekranı doldurur).
+  const qrFit = qrArea ? Math.min(qrArea.width - QR_FRAME, qrArea.height - QR_FRAME - QR_FOOTER_HEIGHT) : 0;
+  const qrSize = Math.max(Math.min(qrFit, tablet ? 720 : 480), 140);
   const initials = (last?.name ?? "")
     .split(" ")
     .filter(Boolean)
@@ -185,25 +195,27 @@ export default function KioskScreen() {
   };
   const bleOk = ble === "on" || ble === "starting";
   const bleAlert = !bleOk && Platform.OS === "android";
+  const avatarSize = tablet ? 120 : 84;
+  const titleSize = tablet ? (landscape ? 64 : 52) : 34;
   const steps = ["Okul uygulamasını açın", "\"QR okut\"a basıp bu kodu okutun", "Adınızı ekranda görünce geçin"];
 
   return (
     <Screen padded={false} style={{ backgroundColor: colors.white }}>
       <View style={{ flex: 1, flexDirection: landscape ? "row" : "column" }}>
         {/* Yeşil bilgi paneli */}
-        <View style={{ width: landscape ? Math.min(width * 0.375, 480) : "100%", backgroundColor: colors.brand, paddingHorizontal: landscape ? 40 : 24, paddingVertical: landscape ? 40 : 22, gap: landscape ? 24 : 14 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 15, fontWeight: "700", letterSpacing: 1.8, textTransform: "uppercase", color: "#CFE4D6" }}>{last ? `Giriş · Çıkış · ${start.kiosk.name}` : "İzmir Fen"}</Text>
-            <Text style={{ fontSize: 20, fontWeight: "600", fontFamily: mono, color: colors.white }}>
+        <View style={{ width: landscape ? Math.min(width * 0.375, 520) : "100%", backgroundColor: colors.brand, paddingHorizontal: tablet ? 40 : 24, paddingVertical: tablet ? 36 : 18, gap: tablet ? 24 : 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Text numberOfLines={1} style={{ flex: 1, fontSize: tablet ? 15 : 13, fontWeight: "700", letterSpacing: 1.8, textTransform: "uppercase", color: "#CFE4D6" }}>{last ? `Giriş · Çıkış · ${start.kiosk.name}` : "İzmir Fen"}</Text>
+            <Text style={{ fontSize: tablet ? 20 : 17, fontWeight: "600", fontFamily: mono, color: colors.white }}>
               {new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" }).format(new Date(serverNow))}
             </Text>
           </View>
 
           {last ? (
-            <View style={{ backgroundColor: colors.white, borderRadius: 26, padding: 24, alignItems: "center", gap: 14 }}>
+            <View style={{ backgroundColor: colors.white, borderRadius: 26, padding: tablet ? 24 : 16, alignItems: "center", gap: tablet ? 14 : 8 }}>
               <View>
-                <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: last.direction === "IN" ? colors.brandSoft : colors.exitSoft, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 44, fontWeight: "700", color: last.direction === "IN" ? colors.brand : colors.exit }}>{initials}</Text>
+                <View style={{ width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2, backgroundColor: last.direction === "IN" ? colors.brandSoft : colors.exitSoft, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: avatarSize * 0.37, fontWeight: "700", color: last.direction === "IN" ? colors.brand : colors.exit }}>{initials}</Text>
                 </View>
                 <View style={{ position: "absolute", right: -2, bottom: 4, width: 42, height: 42, borderRadius: 21, borderWidth: 4, borderColor: colors.white, backgroundColor: last.direction === "IN" ? colors.brand : colors.exit, alignItems: "center", justifyContent: "center" }}>
                   <IconCheck size={20} color={colors.white} />
@@ -212,19 +224,23 @@ export default function KioskScreen() {
               <View style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: last.direction === "IN" ? colors.brandSoft : colors.exitSoft }}>
                 <Text style={{ fontSize: 17, fontWeight: "700", color: last.direction === "IN" ? colors.brandDark : colors.exitInk }}>{last.direction === "IN" ? "Giriş" : "Çıkış"} ✓</Text>
               </View>
-              <Text style={{ fontSize: 34, lineHeight: 38, fontWeight: "800", color: colors.ink, textAlign: "center" }}>{last.name}</Text>
-              <Text style={{ fontSize: 19, color: colors.inkSoft }}>
+              <Text numberOfLines={2} adjustsFontSizeToFit style={{ fontSize: tablet ? 34 : 26, lineHeight: tablet ? 38 : 30, fontWeight: "800", color: colors.ink, textAlign: "center" }}>
+                {last.name}
+              </Text>
+              <Text style={{ fontSize: tablet ? 19 : 16, color: colors.inkSoft }}>
                 {last.className} · <Text style={{ fontFamily: mono, fontWeight: "600", color: colors.ink }}>{last.time}</Text>
               </Text>
             </View>
           ) : (
             <>
               <View style={{ gap: 6 }}>
-                <Text style={{ fontSize: landscape ? 64 : 40, lineHeight: landscape ? 62 : 42, fontWeight: "800", letterSpacing: -1.5, color: colors.white }}>{landscape ? "GİRİŞ\nÇIKIŞ" : "GİRİŞ · ÇIKIŞ"}</Text>
-                <Text style={{ fontSize: 19, color: "#CFE4D6" }}>{start.kiosk.name}</Text>
+                <Text style={{ fontSize: titleSize, lineHeight: titleSize * 0.98, fontWeight: "800", letterSpacing: -1.5, color: colors.white }}>{landscape && tablet ? "GİRİŞ\nÇIKIŞ" : "GİRİŞ · ÇIKIŞ"}</Text>
+                <Text numberOfLines={1} style={{ fontSize: tablet ? 19 : 16, color: "#CFE4D6" }}>
+                  {start.kiosk.name}
+                </Text>
               </View>
-              {landscape && <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.2)" }} />}
-              {landscape && (
+              {tablet && <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.2)" }} />}
+              {tablet && (
                 <View style={{ gap: 18 }}>
                   {steps.map((t, i) => (
                     <View key={t} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -240,13 +256,13 @@ export default function KioskScreen() {
           )}
 
           {landscape && <View style={{ flex: 1 }} />}
-          <Text style={{ fontSize: 15, lineHeight: 22, color: "#CFE4D6" }}>
+          <Text style={{ fontSize: tablet ? 15 : 13, lineHeight: tablet ? 22 : 18, color: "#CFE4D6" }}>
             {last ? "Ad 4 saniye ekranda kalır. QR açık; sıradaki öğrenci beklemeden okutabilir." : "Okul uygulamasını açıp bu kodu okutun. Giriş mi çıkış mı olduğunu sistem bilir. Telefonu olmayan öğrenciler kapı görevlisine başvursun."}
           </Text>
         </View>
 
         {/* QR alanı */}
-        <View style={{ flex: 1, paddingHorizontal: 32, paddingTop: 24 }}>
+        <View style={{ flex: 1, paddingHorizontal: tablet ? 32 : 16, paddingTop: tablet ? 24 : 12 }}>
           {bleAlert && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: 18, backgroundColor: colors.dangerSoft }}>
               <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}>
@@ -255,23 +271,26 @@ export default function KioskScreen() {
               <Text style={{ flex: 1, fontSize: 17, fontWeight: "700", color: "#5E120C" }}>{bleText[ble]}</Text>
             </View>
           )}
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }} onLayout={(e) => setQrArea(e.nativeEvent.layout)}>
             <View style={{ padding: 22, backgroundColor: colors.white, borderRadius: 28, borderWidth: 2, borderColor: colors.lineSoft }}>
               <QRCode value={payload} size={qrSize} ecl="M" quietZone={8} />
             </View>
             <View style={{ width: qrSize + 44, height: 8, backgroundColor: colors.lineSoft, borderRadius: 4, marginTop: 18, overflow: "hidden" }}>
               <View style={{ width: `${(remaining / slotSeconds) * 100}%`, height: 8, borderRadius: 4, backgroundColor: colors.brand }} />
             </View>
-            <View style={{ width: qrSize + 44, flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
-              <Text style={{ fontSize: 16, color: colors.inkSoft }}>Kod {Math.ceil(remaining)} sn içinde yenilenecek</Text>
-              <Text style={{ fontSize: 16, fontFamily: mono, color: colors.muted }}>{shortCode}</Text>
+            <View style={{ width: qrSize + 44, flexDirection: "row", justifyContent: "space-between", gap: 8, marginTop: 10 }}>
+              <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: tablet ? 16 : 14, color: colors.inkSoft }}>Kod {Math.ceil(remaining)} sn içinde yenilenecek</Text>
+              <Text style={{ fontSize: tablet ? 16 : 14, fontFamily: mono, color: colors.muted }}>{shortCode}</Text>
             </View>
           </View>
-          <View style={{ minHeight: 60, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: colors.lineSoft, gap: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}>
+          {/* Durum satırı: dar ekranda sığmayan parça alt satıra geçer (üst üste binmez). */}
+          <View style={{ minHeight: 56, paddingVertical: 10, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: colors.lineSoft, columnGap: 16, rowGap: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: online ? colors.brand : colors.danger }} />
               <Text style={{ fontSize: 14, fontWeight: online ? "400" : "700", color: online ? colors.inkSoft : colors.danger }}>{online ? "Sunucu bağlantısı var" : "Sunucuya ulaşılamıyor"}</Text>
-              <View style={{ width: 10, height: 10, borderRadius: 5, marginLeft: 8, backgroundColor: bleOk ? colors.brand : colors.muted }} />
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: bleOk ? colors.brand : colors.muted }} />
               <Text style={{ fontSize: 14, color: colors.inkSoft }}>{bleText[ble]}</Text>
             </View>
             <Pressable onLongPress={exitKiosk} delayLongPress={1500} hitSlop={16}>

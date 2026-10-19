@@ -8,3 +8,6 @@ node_modules/
 .vscode/
 # görev planı (Jira'ya aktarılır, depoya girmez)
 tasks.md
+ios-kur.sh
+android-apk.sh
+TESTFLIGHT.md
