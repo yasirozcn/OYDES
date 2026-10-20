@@ -17,13 +17,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://DEGISTIRIN.example.com"
+        "EXPO_PUBLIC_API_URL": "https://doqrapp.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://DEGISTIRIN.example.com"
+        "EXPO_PUBLIC_API_URL": "https://doqrapp.com"
       }
     },
     "kiosk-lan": {
