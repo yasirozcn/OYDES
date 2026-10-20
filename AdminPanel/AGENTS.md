@@ -73,6 +73,9 @@ AdminPanel/
         ├── login/
         │   ├── page.tsx ⏳ · LoginForm.tsx ⏳
         │   └── actions.ts ⏳           loginAction, logoutAction
+        ├── (public)/ ✅                herkese açık, giriş gerektirmez (mağaza Support / Privacy Policy URL'leri)
+        │   ├── layout.tsx · school.ts  ortak çerçeve + okul/destek iletişim bilgileri
+        │   └── destek/page.tsx · gizlilik/page.tsx
         ├── (panel)/
         │   ├── layout.tsx ⏳           requireWebAdmin + sol menü + kullanıcı kutusu + Çıkış yap
         │   ├── NavLinks.tsx ⏳         menü bağlantıları (aktif bağlantı vurgulu, ikonlu)
@@ -189,6 +192,8 @@ Sayfalar sunucu bileşenidir, veriyi doğrudan repo'dan okur ve `export const dy
 | Yol | Dosya | Veri (repo) | İçerik |
 | --- | --- | --- | --- |
 | `/login` | `login/page.tsx` + `LoginForm.tsx` | `getWebAdmin` | Oturum varsa `/`'e yönlendir. Solda koyu tanıtım paneli (geniş ekranda): logo `İF`, "İzmir Fen", "Giriş-Çıkış Yönetim Paneli", büyük başlık "Kim okulda, kim çıktı — tek bakışta.". Sağda "Giriş-Çıkış Yönetim Paneli", "Yönetici hesabınızla giriş yapın.", form: E-posta, Şifre, "Giriş yap" / "Giriş yapılıyor…" |
+| `/destek` | `(public)/destek/page.tsx` | — (statik) | Giriş gerektirmez. Uygulamanın tanımı, sık sorulanlar (giriş, telefon değiştirme/cihaz sıfırlama, kamera ve Bluetooth izni, kiosk için Android tablet), iletişim (destek e-postası, okul telefonu, okul sitesi — `(public)/school.ts`) |
+| `/gizlilik` | `(public)/gizlilik/page.tsx` | — (statik) | Giriş gerektirmez. Gizlilik politikası: veri sorumlusu okul; işlenen veriler (telefon, kiosk e-postası, cihaz kimliği, giriş-çıkış kayıtları) mobil privacy manifest ve App Privacy beyanıyla aynı; konum toplanmaz; saklama bir eğitim yılı; KVKK m.11 hakları |
 | `/` | `(panel)/page.tsx` | `dashboardStats()`, `listEvents({ limit: 15 })`, `listKiosks()`, `listDoorPresence()` | "Canlı durum" + `<AutoRefresh seconds={10} />`; kartlar: her aktif kiosk için bir kart (kiosk adı, o kapıda içerideki öğrenci sayısı, "içeride · `total` öğrenciden", doluluk çubuğu), **Bugünkü hareket** (`todayEvents`, "bugün"), **Reddedilen okutma** (`rejectedToday`, "bugün"; >0 ise kırmızı kart). "Son hareketler" tablosu + "Tümünü gör →" `/hareketler` |
 | `/hareketler` | `(panel)/hareketler/page.tsx` | `listEvents({ limit: 300 })` | Tablo (inceleme düğmesi/filtresi yok, kök AGENTS.md §0.2); manuel/çevrimdışı kayıtta kaynak rozeti; not varsa "Not: …" |
 | `/ogrenciler` | `(panel)/ogrenciler/page.tsx` + `StudentForms.tsx` | `listStudents()`, `listKiosks()`, `listDoorPresence()` | Tablo (Öğrenci · Telefon · Veli · Durum · Cihaz · İşlemler) + "Yeni öğrenci ekle" formu. Durum: her aktif kiosk için kiosk adı + "İçeride"/"Dışarıda"/"Kayıt yok" + **Manuel giriş/çıkış** düğmesi (kayıt yoksa ikisi de) |

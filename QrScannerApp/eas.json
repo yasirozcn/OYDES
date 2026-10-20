@@ -5,6 +5,7 @@
   },
   "build": {
     "development": {
+      "node": "24.22.0",
       "developmentClient": true,
       "distribution": "internal",
       "env": {
@@ -12,21 +13,24 @@
       }
     },
     "preview": {
+      "node": "24.22.0",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://DEGISTIRIN.example.com"
+        "EXPO_PUBLIC_API_URL": "https://doqrapp.com"
       }
     },
     "production": {
+      "node": "24.22.0",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://DEGISTIRIN.example.com"
+        "EXPO_PUBLIC_API_URL": "https://doqrapp.com"
       }
     },
     "kiosk-lan": {
+      "node": "24.22.0",
       "distribution": "internal",
       "android": {
         "buildType": "apk"

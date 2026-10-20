@@ -33,11 +33,11 @@ export default function KioskSelect() {
     <Screen>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 24 }}>
         <Logo />
-        <Text style={{ flex: 1, fontSize: 15, fontWeight: "700", color: colors.ink }}>Kapı Tableti</Text>
+        <Text style={{ fontSize: 15, fontWeight: "700", color: colors.ink }}>Kapı Tableti</Text>
         <Button
           title="Yönetici oturumunu kapat"
           variant="danger"
-          style={{ minHeight: 44, borderRadius: 12, paddingHorizontal: 14 }}
+          style={{ minHeight: 44, borderRadius: 12, paddingHorizontal: 14, marginLeft: "auto", flexShrink: 1 }}
           onPress={async () => {
             await clearAdminSession();
             router.replace("/");
