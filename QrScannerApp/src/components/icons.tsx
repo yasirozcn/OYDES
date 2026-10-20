@@ -15,6 +15,8 @@ function make(d: string, defaultStroke = 2) {
 }
 
 export const IconBack = make("M15 5l-7 7 7 7", 2.2);
+export const IconEye = make("M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z");
+export const IconEyeOff = make("M17.9 17.9A10 10 0 0112 19c-6.4 0-10-7-10-7a18 18 0 015-5.9M9.9 5.2A9 9 0 0112 5c6.4 0 10 7 10 7a18 18 0 01-2.2 3.2M14.1 14.1a3 3 0 01-4.2-4.2M3 3l18 18");
 export const IconArrowRight = make("M5 12h14M13 6l6 6-6 6", 2.2);
 export const IconCheck = make("M5 12.5l4.5 4.5L19 7", 3);
 export const IconIn = make("M10 17l5-5-5-5M15 12H3M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4");

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { IconBack } from "./icons";
+import { IconBack, IconEye, IconEyeOff } from "./icons";
 import { colors } from "@/lib/config";
 
 // Ortak arayüz parçaları: tüm ekranlar bu bileşenlerle kurulur (renkler config.ts'teki paletten).
@@ -78,24 +78,40 @@ export function Button({
   );
 }
 
-export function Field({ label, error, ...props }: TextInputProps & { label: string; error?: string | null }) {
+// Şifre alanlarında (secureTextEntry) göz düğmesi şifreyi gösterir/gizler.
+export function Field({ label, error, secureTextEntry, ...props }: TextInputProps & { label: string; error?: string | null }) {
   const [focused, setFocused] = useState(false);
+  const [hidden, setHidden] = useState(true);
   return (
     <View style={{ marginBottom: 16 }}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        placeholderTextColor={colors.muted}
-        {...props}
-        onFocus={(e) => {
-          setFocused(true);
-          props.onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocused(false);
-          props.onBlur?.(e);
-        }}
-        style={[styles.input, focused && styles.inputFocus, error ? { borderColor: colors.danger } : null, props.style]}
-      />
+      <View>
+        <TextInput
+          placeholderTextColor={colors.muted}
+          {...props}
+          secureTextEntry={secureTextEntry && hidden}
+          onFocus={(e) => {
+            setFocused(true);
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            props.onBlur?.(e);
+          }}
+          style={[styles.input, focused && styles.inputFocus, error ? { borderColor: colors.danger } : null, secureTextEntry && { paddingRight: 52 }, props.style]}
+        />
+        {secureTextEntry ? (
+          <Pressable
+            onPress={() => setHidden((h) => !h)}
+            accessibilityRole="button"
+            accessibilityLabel={hidden ? "Şifreyi göster" : "Şifreyi gizle"}
+            hitSlop={8}
+            style={styles.eyeButton}
+          >
+            {hidden ? <IconEye size={22} color={colors.muted} /> : <IconEyeOff size={22} color={colors.muted} />}
+          </Pressable>
+        ) : null}
+      </View>
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
@@ -190,6 +206,7 @@ export const styles = StyleSheet.create({
     color: colors.ink,
   },
   inputFocus: { borderWidth: 2, borderColor: colors.brand },
+  eyeButton: { position: "absolute", right: 6, top: 0, bottom: 0, width: 44, alignItems: "center", justifyContent: "center" },
   fieldError: { marginTop: 6, fontSize: 13, fontWeight: "600", color: colors.danger },
   errorBox: { flexDirection: "row", gap: 12, alignItems: "flex-start", backgroundColor: colors.dangerSoft, borderRadius: 14, padding: 14, marginBottom: 16 },
   infoBox: { flexDirection: "row", gap: 12, alignItems: "flex-start", backgroundColor: colors.brandSoft, borderRadius: 14, padding: 14, marginBottom: 16 },
