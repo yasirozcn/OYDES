@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
 import { IconCheck } from "@/components/icons";
-import { Button, ErrorBox, Field, InfoBox, Screen, Title, TopBar } from "@/components/ui";
+import { Button, ErrorBox, Field, InfoBox, LegalLinks, Screen, Title, TopBar } from "@/components/ui";
 import { api, ApiError, type AuthResponse } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { getDeviceIdentity } from "@/lib/device";
@@ -96,6 +96,7 @@ export default function StudentLogin() {
               <ErrorBox message={error} />
               <View style={{ flex: 1, minHeight: 24 }} />
               <Button title="Devam" onPress={submitPhone} loading={loading} style={{ minHeight: 60, borderRadius: 16 }} />
+              <LegalLinks style={{ marginTop: 8 }} />
             </>
           )}
 

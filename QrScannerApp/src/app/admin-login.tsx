@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Text, useWindowDimensions, View } from "react-native";
-import { Button, ErrorBox, Field, InfoBox, Logo, mono, Screen, Title, TopBar } from "@/components/ui";
+import { Button, ErrorBox, Field, InfoBox, LegalLinks, Logo, mono, Screen, Title, TopBar } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { useSession } from "@/lib/session";
@@ -45,6 +45,7 @@ export default function AdminLogin() {
       {!wide && <View style={{ flex: 1, minHeight: 16 }} />}
       <Button title="Giriş yap" onPress={submit} loading={loading} style={{ minHeight: 60, borderRadius: 16 }} />
       <Button title="Öğrenci girişine dön" variant="ghost" style={{ marginTop: 8 }} onPress={() => router.replace("/student-login")} />
+      <LegalLinks />
     </ScrollView>
   );
 

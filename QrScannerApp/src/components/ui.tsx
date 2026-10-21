@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
+import { ActivityIndicator, Image, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconBack, IconEye, IconEyeOff } from "./icons";
-import { colors } from "@/lib/config";
+import { API_URL, colors } from "@/lib/config";
 
 // Ortak arayüz parçaları: tüm ekranlar bu bileşenlerle kurulur (renkler config.ts'teki paletten).
 
@@ -167,6 +167,21 @@ export function TopBar({ title, onBack, right }: { title?: string; onBack?: () =
   );
 }
 
+// Mağaza kuralı: gizlilik politikası uygulamanın içinden de açılabilmeli (sayfalar AdminPanel'de, herkese açık).
+export function LegalLinks({ style }: { style?: ViewStyle }) {
+  return (
+    <View style={[styles.legalLinks, style]}>
+      <Text accessibilityRole="link" style={styles.legalLink} onPress={() => void Linking.openURL(`${API_URL}/gizlilik`)}>
+        Gizlilik Politikası
+      </Text>
+      <Text style={{ color: colors.muted }}>·</Text>
+      <Text accessibilityRole="link" style={styles.legalLink} onPress={() => void Linking.openURL(`${API_URL}/destek`)}>
+        Destek
+      </Text>
+    </View>
+  );
+}
+
 type PillTone = "brand" | "neutral" | "exit" | "warn" | "danger";
 
 const pillTones: Record<PillTone, { bg: string; fg: string; dot: string }> = {
@@ -219,4 +234,6 @@ export const styles = StyleSheet.create({
   pillDot: { width: 8, height: 8, borderRadius: 4 },
   pillText: { fontSize: 13, fontWeight: "700" },
   card: { backgroundColor: colors.white, borderRadius: 20, borderWidth: 1, borderColor: colors.line, padding: 20 },
+  legalLinks: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 10, paddingVertical: 12 },
+  legalLink: { fontSize: 13, fontWeight: "600", color: colors.inkSoft, textDecorationLine: "underline" },
 });

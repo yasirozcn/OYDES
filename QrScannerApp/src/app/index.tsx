@@ -1,7 +1,7 @@
 import { Redirect, router } from "expo-router";
 import { ActivityIndicator, Text, View } from "react-native";
 import { IconBluetooth, IconQr } from "@/components/icons";
-import { Button, Logo, Screen, styles } from "@/components/ui";
+import { Button, LegalLinks, Logo, Screen, styles } from "@/components/ui";
 import { colors } from "@/lib/config";
 import { useSession } from "@/lib/session";
 
@@ -48,6 +48,7 @@ export default function Home() {
         <Button title="Öğrenci girişi" onPress={() => router.push("/student-login")} />
         <Button title="Yönetici girişi (kiosk)" variant="secondary" style={{ marginTop: 12 }} onPress={() => router.push("/admin-login")} />
       </View>
+      <LegalLinks />
     </Screen>
   );
 }
