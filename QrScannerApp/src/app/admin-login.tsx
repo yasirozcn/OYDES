@@ -1,20 +1,21 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, Text, useWindowDimensions, View } from "react-native";
-import { Button, ErrorBox, Field, InfoBox, LegalLinks, Logo, mono, Screen, Title, TopBar } from "@/components/ui";
+import { KeyboardAvoidingView, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { Button, ErrorBox, Field, LegalLinks, Logo, Screen, TextLink, Title, TopBar } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { useSession } from "@/lib/session";
 
 // Uygulama içi yönetici girişi yalnızca kiosk (QR gösterme) ekranını açar.
 // Hesaplar AdminPanel veritabanındaki yönetici kullanıcılarıdır (admin_users).
-// Tablette (geniş ekran) solda kurulum adımları, sağda form; telefonda yalnızca form.
-const SETUP_STEPS = ["Kiosk hesabıyla giriş yapın", "Tabletin duracağı kapıyı seçin", "Tableti şarja takılı, Bluetooth açık bırakın. Ekran kapanmaz."];
+// İki adım: e-posta → şifre. Tablette (geniş ekran) solda başlık paneli, sağda form; telefonda yalnızca form.
 const WIDE_MIN_WIDTH = 720;
+const EMAIL_PATTERN = /^\S+@\S+$/;
 
 export default function AdminLogin() {
   const { setAdminSession } = useSession();
   const { width } = useWindowDimensions();
+  const [step, setStep] = useState<"email" | "password">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,25 +36,47 @@ export default function AdminLogin() {
     }
   };
 
+  const back = () => {
+    setError(null);
+    if (step === "email") {
+      if (router.canGoBack()) router.back();
+      else router.replace("/welcome");
+    } else {
+      setStep("email");
+      setPassword("");
+    }
+  };
+
   const form = (
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: wide ? "center" : "flex-start", width: "100%", maxWidth: 440, alignSelf: "center" }}>
-      <Title sub="Okulun verdiği kiosk hesabını kullanın.">Yönetici girişi</Title>
-      <InfoBox message="Kiosk için Android tablet önerilir: Bluetooth yakınlık doğrulaması yalnızca Android'de yayınlanabilir." />
-      <Field label="E-posta" value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="username" />
-      <Field label="Şifre" value={password} onChangeText={setPassword} secureTextEntry textContentType="password" onSubmitEditing={submit} />
-      <ErrorBox message={error} />
-      {!wide && <View style={{ flex: 1, minHeight: 16 }} />}
-      <Button title="Giriş yap" onPress={submit} loading={loading} style={{ minHeight: 60, borderRadius: 16 }} />
-      <Button title="Öğrenci girişine dön" variant="ghost" style={{ marginTop: 8 }} onPress={() => router.replace("/student-login")} />
-      <LegalLinks />
-    </ScrollView>
+    <>
+      <TopBar step={step === "email" ? "Adım 1 / 2" : "Adım 2 / 2"} onBack={back} />
+      <ScrollView keyboardShouldPersistTaps="always" style={{ flex: 1, width: "100%", maxWidth: 440, alignSelf: "center" }} contentContainerStyle={{ flexGrow: 1, justifyContent: wide ? "center" : "flex-start" }}>
+        {step === "email" ? (
+          <>
+            <Title>E-postanızı girin</Title>
+            <Field label="E-posta" value={email} onChangeText={setEmail} autoFocus autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="username" />
+            {!wide && <View style={{ flex: 1, minHeight: 16 }} />}
+            <Button title="Devam" onPress={() => setStep("password")} disabled={!EMAIL_PATTERN.test(email.trim())} style={{ minHeight: 60, borderRadius: 16 }} />
+            <TextLink title="Öğrenci girişine dön" onPress={() => router.replace("/student-login")} />
+          </>
+        ) : (
+          <>
+            <Title>Şifrenizi girin</Title>
+            <Field label="Şifre" value={password} onChangeText={setPassword} autoFocus secureTextEntry textContentType="password" onSubmitEditing={submit} />
+            <ErrorBox message={error} />
+            {!wide && <View style={{ flex: 1, minHeight: 16 }} />}
+            <Button title="Giriş yap" onPress={submit} loading={loading} disabled={password.length === 0} style={{ minHeight: 60, borderRadius: 16 }} />
+          </>
+        )}
+        <LegalLinks />
+      </ScrollView>
+    </>
   );
 
   if (!wide)
     return (
       <Screen>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-          <TopBar title="Kiosk kurulumu" onBack={() => router.back()} />
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
           {form}
         </KeyboardAvoidingView>
       </Screen>
@@ -62,29 +85,11 @@ export default function AdminLogin() {
   return (
     <Screen padded={false} style={{ backgroundColor: colors.white }}>
       <View style={{ flex: 1, flexDirection: "row" }}>
-        <View style={{ width: Math.min(width * 0.42, 520), backgroundColor: colors.brandDark, padding: 40, gap: 28 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Logo />
-            <View>
-              <Text style={{ fontSize: 15, fontWeight: "700", color: colors.white }}>İzmir Fen</Text>
-              <Text style={{ fontSize: 13, color: "#CFE4D6" }}>Kiosk kurulumu</Text>
-            </View>
-          </View>
+        <View style={{ width: Math.min(width * 0.42, 520), backgroundColor: colors.brand, padding: 40, gap: 24 }}>
+          <Logo />
           <Text style={{ fontSize: 34, lineHeight: 40, fontWeight: "800", letterSpacing: -0.6, color: colors.white }}>Bu tableti kapı ekranına dönüştürün</Text>
-          <View style={{ gap: 16 }}>
-            {SETUP_STEPS.map((t, i) => (
-              <View key={t} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ fontSize: 15, fontWeight: "700", fontFamily: mono, color: colors.brandDark }}>{i + 1}</Text>
-                </View>
-                <Text style={{ flex: 1, fontSize: 16, fontWeight: "600", lineHeight: 22, color: colors.white }}>{t}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={{ flex: 1 }} />
-          <Text style={{ fontSize: 13, lineHeight: 19, color: "#CFE4D6" }}>Kiosk hesabı yönetim paneline giremez; yalnızca QR ekranını açar.</Text>
         </View>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, paddingHorizontal: 40, paddingVertical: 24 }}>
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1, paddingHorizontal: 40, paddingVertical: 24 }}>
           {form}
         </KeyboardAvoidingView>
       </View>

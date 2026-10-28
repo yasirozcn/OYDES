@@ -2,9 +2,10 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from "ex
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, Text, View } from "react-native";
-import { IconAlert, IconArrowRight, IconBack, IconBluetooth, IconBluetoothOff, IconCamera, IconCheck, IconIn, IconInfo, IconOut, IconX } from "@/components/icons";
-import { Button, ErrorBox, mono, Screen, styles, TopBar } from "@/components/ui";
+import { ActivityIndicator, AppState, Linking, Pressable, Text, View } from "react-native";
+import { BluetoothGate } from "@/components/BluetoothGate";
+import { IconAlert, IconBack, IconBluetooth, IconCheck, IconIn, IconInfo, IconOut, IconX } from "@/components/icons";
+import { Button, ErrorBox, mono, OptionRow, Screen, styles, Title, TopBar } from "@/components/ui";
 import { api, ApiError, type MeResponse, type ScanResponse } from "@/lib/api";
 import { bleLog, startBleScan, type BleStatus, type Found } from "@/lib/ble";
 import { colors } from "@/lib/config";
@@ -21,17 +22,22 @@ type Direction = "IN" | "OUT";
 // Jeton bu kadar yeniyse kioskun yanında duyulmuş sayılır (dilim 5 sn + tarama gecikmesi).
 const BLE_FRESH_MS = 8000;
 
-const BLE_TEXT: Record<BleStatus, string> = {
+// Bluetooth kapalı veya izin yoksa durum satırı yerine BluetoothGate uyarısı görünür.
+const BLE_TEXT: Partial<Record<BleStatus, string>> = {
   unavailable: "Bluetooth doğrulaması bu sürümde kapalı",
-  "no-permission": "Bluetooth izni verilmedi",
-  off: "Bluetooth kapalı",
-  scanning: "Kiosk sinyali aranıyor…",
-  found: "Kiosk sinyali alındı",
+  scanning: "Kapı sinyali aranıyor · Kapıya yaklaşın",
+  found: "Kapı sinyali alındı",
+};
+
+const BLE_DOT: Partial<Record<BleStatus, string>> = {
+  unavailable: colors.muted,
+  scanning: colors.accent,
+  found: colors.brandSoft,
 };
 
 export default function Scan() {
   const { studentToken, config, refreshConfig } = useSession();
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
   const [phase, setPhase] = useState<Phase>("scan");
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -39,8 +45,25 @@ export default function Scan() {
   const [bleStatus, setBleStatus] = useState<BleStatus>("scanning");
   const [needsDirection, setNeedsDirection] = useState<boolean | null>(null);
   const [chosenDirection, setChosenDirection] = useState<Direction | null>(null);
+  const [pickedDirection, setPickedDirection] = useState<Direction>("IN");
   const ble = useRef<Found | null>(null);
   const busy = useRef(false);
+  const askedForCamera = useRef(false);
+
+  // Kamera izni ayrı bir ekranda değil, bu ekran açılınca doğrudan sistem penceresiyle istenir (yalnızca bir kez).
+  useEffect(() => {
+    if (!permission || permission.granted || !permission.canAskAgain || askedForCamera.current) return;
+    askedForCamera.current = true;
+    void requestPermission();
+  }, [permission, requestPermission]);
+
+  // Ayarlar'dan izin verilip uygulamaya dönülünce kamera durumu yenilenir.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (status) => {
+      if (status === "active") void getPermission();
+    });
+    return () => sub.remove();
+  }, [getPermission]);
 
   // Ekran açıkken kioskun BLE jetonu dinlenir; son jeton ref'te tutulur.
   useEffect(() => {
@@ -77,7 +100,7 @@ export default function Scan() {
   const onScanned = async ({ data }: BarcodeScanningResult) => {
     if (busy.current || phase !== "scan") return;
     if (!isOurQr(data)) {
-      setHint("Bu QR kod okul kioskuna ait değil.");
+      setHint("Bu QR kod okul kapısına ait değil.");
       return;
     }
     const last = ble.current;
@@ -89,7 +112,7 @@ export default function Scan() {
         : "yok (hiç alınmadı)";
     bleLog(`QR okundu: ${data.slice(0, 40)}… — BLE jetonu: ${bleDesc}`);
     if (config?.bleRequired && !fresh) {
-      setHint("Kiosk Bluetooth sinyali bekleniyor. Bluetooth'un açık olduğundan emin olup kioska yaklaşın.");
+      setHint("Kapı sinyali bekleniyor. Bluetooth'un açık olduğundan emin olup kapıya yaklaşın.");
       return;
     }
 
@@ -131,37 +154,15 @@ export default function Scan() {
     }
   };
 
-  if (!permission) return <Screen />;
-
-  if (!permission.granted)
-    return (
-      <Screen>
-        <TopBar title="QR okut" onBack={() => router.back()} />
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center", marginBottom: 22 }}>
-            <IconCamera size={44} color={colors.brand} />
-          </View>
-          <Text style={[styles.sub, { textAlign: "center", marginBottom: 24 }]}>QR okutmak için kamera izni gerekiyor.</Text>
-        </View>
-        {permission.canAskAgain ? (
-          <Button title="Kamera izni ver" onPress={() => void requestPermission()} style={{ minHeight: 60, borderRadius: 16 }} />
-        ) : (
-          <Button title="Ayarları aç" onPress={() => void Linking.openSettings()} style={{ minHeight: 60, borderRadius: 16 }} />
-        )}
-        <Button title="Geri" variant="ghost" onPress={() => router.back()} style={{ marginTop: 8 }} />
-      </Screen>
-    );
-
   if (phase === "done" && result) {
     const inDir = result.direction === "IN";
-    const tone = inDir ? colors.brand : colors.exit;
-    const bleResult = result.bleVerified === null ? "sinyal yok" : result.bleVerified ? "kiosk doğrulandı ✓" : "jeton eşleşmedi ✗";
+    const bleResult = result.bleVerified === null ? "sinyal yok" : result.bleVerified ? "kapı doğrulandı ✓" : "doğrulanamadı ✗";
     return (
-      <Screen style={{ backgroundColor: tone }}>
+      <Screen style={{ backgroundColor: colors.brand }}>
         <StatusBar style="light" />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: colors.white, alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
-            <IconCheck size={64} strokeWidth={3} color={tone} />
+            <IconCheck size={64} strokeWidth={3} color={colors.brand} />
           </View>
           <Text style={{ fontSize: 34, fontWeight: "800", color: colors.white, textAlign: "center" }}>{inDir ? "Giriş kaydedildi" : "Çıkış kaydedildi"}</Text>
           <Text style={{ fontSize: 44, fontWeight: "700", fontFamily: mono, color: colors.white, marginTop: 12 }}>{result.time}</Text>
@@ -184,7 +185,7 @@ export default function Scan() {
           onPress={() => router.back()}
           style={({ pressed }) => ({ minHeight: 60, borderRadius: 16, backgroundColor: colors.white, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.85 : 1 })}
         >
-          <Text style={{ fontSize: 17, fontWeight: "700", color: inDir ? colors.brandDark : colors.exitInk }}>Tamam</Text>
+          <Text style={{ fontSize: 17, fontWeight: "700", color: colors.brandDark }}>Tamam</Text>
         </Pressable>
       </Screen>
     );
@@ -216,22 +217,20 @@ export default function Scan() {
   if (needsDirection && !chosenDirection && phase === "scan")
     return (
       <Screen>
-        <TopBar title="İlk okutma" onBack={() => router.back()} />
-        <Text style={[styles.title, { fontSize: 30 }]}>Bu kapıda ilk okutmanız</Text>
-        <Text style={[styles.sub, { marginBottom: 24 }]}>
-          Şu an içeri mi giriyorsunuz, dışarı mı çıkıyorsunuz? Bunu her kapı için yalnızca bir kez seçersiniz; sonra bu kapıdaki okutmalarda sistem sırayla giriş ve çıkış kaydeder.
-        </Text>
-        <View style={{ gap: 14 }}>
-          <DirectionCard tone="in" title="Giriş yapıyorum" onPress={() => setChosenDirection("IN")} />
-          <DirectionCard tone="out" title="Çıkış yapıyorum" onPress={() => setChosenDirection("OUT")} />
+        <TopBar onBack={() => router.back()} />
+        <Title sub="Bu kapıda ilk kez okutuyorsunuz. Bir kez seçmeniz yeterli.">Şu an ne yapıyorsunuz?</Title>
+        <View style={{ gap: 16 }}>
+          <OptionRow title="Okula giriyorum" icon={IconIn} selected={pickedDirection === "IN"} onPress={() => setPickedDirection("IN")} />
+          <OptionRow title="Okuldan çıkıyorum" icon={IconOut} selected={pickedDirection === "OUT"} onPress={() => setPickedDirection("OUT")} />
         </View>
         <View style={{ flex: 1 }} />
-        <Button title="Vazgeç" variant="ghost" onPress={() => router.back()} />
+        <Button title={pickedDirection === "IN" ? "Girişi kaydet" : "Çıkışı kaydet"} onPress={() => setChosenDirection(pickedDirection)} style={{ minHeight: 60, borderRadius: 16 }} />
       </Screen>
     );
 
-  const bleOk = bleStatus === "scanning" || bleStatus === "found";
-  const BleIcon = bleOk ? IconBluetooth : IconBluetoothOff;
+  const cameraAllowed = permission?.granted === true;
+  const cameraDenied = permission !== null && !permission.granted;
+  const bleLine = BLE_TEXT[bleStatus];
   const corner = { position: "absolute" as const, width: 44, height: 44, borderColor: colors.white };
 
   return (
@@ -243,19 +242,21 @@ export default function Scan() {
         </Pressable>
         <View style={{ width: 36 }} />
       </View>
-      <Text style={{ fontSize: 26, lineHeight: 31, fontWeight: "800", letterSpacing: -0.3, color: colors.white }}>Kiosk QR kodunu okutun</Text>
-      <Text style={{ fontSize: 15, lineHeight: 21, color: "rgba(255,255,255,0.72)", marginTop: 6, marginBottom: 16 }}>
-        Kiosk ekranındaki kodu çerçevenin içine alın. Kod birkaç saniyede bir yenilenir.
-      </Text>
+      <Text style={{ fontSize: 26, lineHeight: 31, fontWeight: "800", letterSpacing: -0.3, color: colors.white }}>Kapıdaki ekranda görünen QR kodu çerçeveye alın</Text>
+      <Text style={{ fontSize: 15, lineHeight: 21, color: "rgba(255,255,255,0.72)", marginTop: 8, marginBottom: 16 }}>Kod kendiliğinden okunur.</Text>
 
       <View style={{ flex: 1, borderRadius: 24, overflow: "hidden" }}>
-        <CameraView style={{ flex: 1 }} facing="back" barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={phase === "scan" ? onScanned : undefined} />
-        <View pointerEvents="none" style={{ position: "absolute", top: "18%", left: "14%", right: "14%", aspectRatio: 1 }}>
-          <View style={[corner, { top: 0, left: 0, borderTopWidth: 5, borderLeftWidth: 5, borderTopLeftRadius: 18 }]} />
-          <View style={[corner, { top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5, borderTopRightRadius: 18 }]} />
-          <View style={[corner, { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5, borderBottomLeftRadius: 18 }]} />
-          <View style={[corner, { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5, borderBottomRightRadius: 18 }]} />
-        </View>
+        {cameraAllowed && (
+          <>
+            <CameraView style={{ flex: 1 }} facing="back" barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={phase === "scan" ? onScanned : undefined} />
+            <View pointerEvents="none" style={{ position: "absolute", top: "18%", left: "14%", right: "14%", aspectRatio: 1 }}>
+              <View style={[corner, { top: 0, left: 0, borderTopWidth: 5, borderLeftWidth: 5, borderTopLeftRadius: 18 }]} />
+              <View style={[corner, { top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5, borderTopRightRadius: 18 }]} />
+              <View style={[corner, { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5, borderBottomLeftRadius: 18 }]} />
+              <View style={[corner, { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5, borderBottomRightRadius: 18 }]} />
+            </View>
+          </>
+        )}
         {phase === "sending" && (
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(11,18,14,0.65)", alignItems: "center", justifyContent: "center" }}>
             <ActivityIndicator color={colors.white} size="large" />
@@ -264,57 +265,25 @@ export default function Scan() {
         )}
       </View>
 
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.08)", marginTop: 14 }}>
-        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.1)", alignItems: "center", justifyContent: "center" }}>
-          <BleIcon size={20} color={colors.white} />
+      {cameraDenied && (
+        <View style={{ gap: 16, padding: 16, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.08)", marginTop: 16 }}>
+          <Text style={{ fontSize: 15, lineHeight: 21, color: colors.white }}>Kamera izni gerekli. QR kodu okutmak için ayarlardan kamera iznini açın.</Text>
+          <Button title="Ayarları aç" onPress={() => void Linking.openSettings()} style={{ minHeight: 52, borderRadius: 16 }} />
         </View>
-        <Text style={{ flex: 1, fontSize: 15, fontWeight: "600", color: colors.white }}>{BLE_TEXT[bleStatus]}</Text>
-        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: bleStatus === "found" ? colors.brand : bleStatus === "scanning" ? colors.warn : colors.muted }} />
-      </View>
+      )}
       {hint && (
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, backgroundColor: colors.warnSoft, borderRadius: 14, padding: 12, marginTop: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, backgroundColor: colors.warnSoft, borderRadius: 16, padding: 16, marginTop: 16 }}>
           <IconAlert size={20} color={colors.warn} />
           <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", lineHeight: 20, color: colors.warnInk }}>{hint}</Text>
         </View>
       )}
-      <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={({ pressed }) => ({ flex: 1, minHeight: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}
-        >
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "rgba(255,255,255,0.8)" }}>Vazgeç</Text>
-        </Pressable>
-      </View>
+      {bleLine && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "center", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.1)", marginTop: 16 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: BLE_DOT[bleStatus] }} />
+          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.white }}>{bleLine}</Text>
+        </View>
+      )}
+      <BluetoothGate />
     </Screen>
-  );
-}
-
-function DirectionCard({ tone, title, onPress }: { tone: "in" | "out"; title: string; onPress: () => void }) {
-  const main = tone === "in" ? colors.brand : colors.exit;
-  const soft = tone === "in" ? colors.brandSoft : colors.exitSoft;
-  const Icon = tone === "in" ? IconIn : IconOut;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 16,
-        minHeight: 96,
-        borderRadius: 22,
-        borderWidth: 2,
-        borderColor: pressed ? main : colors.line,
-        backgroundColor: pressed ? soft : colors.white,
-        paddingHorizontal: 18,
-      })}
-    >
-      <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: main, alignItems: "center", justifyContent: "center" }}>
-        <Icon size={28} color={colors.white} />
-      </View>
-      <Text style={{ flex: 1, fontSize: 21, fontWeight: "800", color: colors.ink }}>{title}</Text>
-      <IconArrowRight size={22} color={main} />
-    </Pressable>
   );
 }

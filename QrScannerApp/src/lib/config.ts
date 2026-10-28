@@ -11,27 +11,30 @@ export const API_URL: string = (
   "http://localhost:3000"
 ).replace(/\/$/, "");
 
-// Tasarım sistemi: referans uygulamanın renk paleti.
+// Açılış ekranı en az bu kadar görünür; oturum kontrolü bu sürede yapılır.
+export const SPLASH_DURATION_MS = 1000;
+
+// Tasarım sistemi: tek koyu yeşil (brand), sıcak sarı vurgu (accent), beyaz zemin.
+// Kırmızı yalnızca uyarı ve hata içindir.
 export const colors = {
-  brand: "#17613C",
-  brandDark: "#0F4A2C",
-  brandSoft: "#E3EFE6",
+  brand: "#006160",
+  brandDark: "#004746",
+  brandSoft: "#DDEFEE",
+  success: "#3C9D6B",
+  accent: "#F5B73D",
   ink: "#14211A",
-  inkSoft: "#4A564F",
+  inkSoft: "#3D433F",
   muted: "#6B7570",
-  line: "#DDDAD0",
+  line: "#E2DFD6",
   lineSoft: "#ECEAE3",
-  lineStrong: "#C9C5B8",
-  bg: "#F4F3EE",
-  danger: "#B42318",
+  lineStrong: "#A8A294",
+  bg: "#FFFFFF",
+  danger: "#D04A3B",
   dangerSoft: "#FCE8E6",
   dangerInk: "#8F1C13",
   dangerLine: "#F1B8B2",
   warn: "#9A5B00",
   warnSoft: "#FBF0DC",
   warnInk: "#7A4700",
-  exit: "#1E4FA8",
-  exitSoft: "#E4ECF8",
-  exitInk: "#173E85",
   white: "#ffffff",
 };

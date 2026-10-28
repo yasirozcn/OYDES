@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
 import { IconCheck } from "@/components/icons";
-import { Button, ErrorBox, Field, InfoBox, LegalLinks, Screen, Title, TopBar } from "@/components/ui";
+import { Button, ErrorBox, Field, InfoBox, LegalLinks, Screen, TextLink, Title, TopBar } from "@/components/ui";
 import { api, ApiError, type AuthResponse } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { getDeviceIdentity } from "@/lib/device";
@@ -10,8 +10,17 @@ import { useSession } from "@/lib/session";
 
 type Step = "phone" | "create-password" | "password";
 
+const PASSWORD_MIN_LENGTH = 8;
+
 // Türkiye cep numarası: 05XX…, 5XX…, +90 5XX… (boşluk/tire serbest). Asıl doğrulama ve biçimlendirme sunucuda.
 const PHONE_PATTERN = /^(0090|90|0)?5\d{9}$/;
+
+// 05XX XXX XX XX yazılırken boşlukları kendisi ekler; +90 / 90 ile başlayan numaralar olduğu gibi bırakılır.
+function formatPhone(text: string): string {
+  const digits = text.replace(/\D/g, "");
+  if (!digits.startsWith("0") || digits.startsWith("00")) return digits.slice(0, 14);
+  return digits.slice(0, 11).replace(/^(\d{1,4})(\d{1,3})?(\d{1,2})?(\d{1,2})?$/, (_, a, b, c, d) => [a, b, c, d].filter(Boolean).join(" "));
+}
 
 // Öğrenci girişi. Kayıt ol yoktur: telefon numarası okul veritabanında olmalıdır.
 // İlk giriş: telefon → şifre oluştur (bu telefon hesaba bağlanır; başka telefondan giriş yapılamaz).
@@ -20,11 +29,14 @@ export default function StudentLogin() {
   const { setStudentSession } = useSession();
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
-  const [firstName, setFirstName] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const phoneValid = PHONE_PATTERN.test(phone.replace(/\D/g, ""));
+  const passwordLongEnough = password.length >= PASSWORD_MIN_LENGTH;
+  const passwordsMatch = password.length > 0 && password === password2;
 
   const run = async (fn: () => Promise<void>) => {
     setError(null);
@@ -40,11 +52,9 @@ export default function StudentLogin() {
 
   const submitPhone = () =>
     run(async () => {
-      if (!PHONE_PATTERN.test(phone.replace(/\D/g, ""))) throw new ApiError(400, "Geçerli bir cep telefonu numarası girin.", "BAD_PHONE");
       // "Bu telefon başka hesaba bağlı" kararını yalnızca sunucu verir (check-phone → DEVICE_TAKEN).
       const { deviceId } = await getDeviceIdentity();
-      const r = await api<{ next: "create-password" | "password"; firstName: string }>("/api/mobile/student/check-phone", { method: "POST", body: { phone: phone.trim(), deviceId } });
-      setFirstName(r.firstName);
+      const r = await api<{ next: "create-password" | "password" }>("/api/mobile/student/check-phone", { method: "POST", body: { phone: phone.trim(), deviceId } });
       setPassword("");
       setPassword2("");
       setStep(r.next);
@@ -57,8 +67,6 @@ export default function StudentLogin() {
 
   const submitCreatePassword = () =>
     run(async () => {
-      if (password.length < 8) throw new ApiError(400, "Şifre en az 8 karakter olmalı.", "WEAK");
-      if (password !== password2) throw new ApiError(400, "Şifreler eşleşmiyor.", "MISMATCH");
       const { deviceId, deviceSecret } = await getDeviceIdentity();
       const r = await api<AuthResponse>("/api/mobile/student/set-password", {
         method: "POST",
@@ -76,8 +84,10 @@ export default function StudentLogin() {
 
   const back = () => {
     setError(null);
-    if (step === "phone") router.back();
-    else {
+    if (step === "phone") {
+      if (router.canGoBack()) router.back();
+      else router.replace("/welcome");
+    } else {
       setStep("phone");
       setPassword("");
       setPassword2("");
@@ -86,44 +96,45 @@ export default function StudentLogin() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <TopBar title={step === "create-password" ? "İlk giriş" : "Öğrenci girişi"} onBack={back} />
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <TopBar step={step === "phone" ? "Adım 1 / 2" : "Adım 2 / 2"} onBack={back} />
+        <ScrollView keyboardShouldPersistTaps="always" contentContainerStyle={{ flexGrow: 1 }}>
           {step === "phone" && (
             <>
-              <Title sub="Okulun sisteme kaydettiği cep telefonu numaranızı girin.">Öğrenci girişi</Title>
-              <Field label="Cep telefonu" placeholder="05XX XXX XX XX" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" returnKeyType="next" onSubmitEditing={submitPhone} />
+              <Title>Telefon numaranızı girin</Title>
+              <Field label="Cep telefonu" placeholder="05XX XXX XX XX" value={phone} onChangeText={(text) => setPhone(formatPhone(text))} autoFocus keyboardType="number-pad" autoComplete="tel" textContentType="telephoneNumber" />
               <ErrorBox message={error} />
               <View style={{ flex: 1, minHeight: 24 }} />
-              <Button title="Devam" onPress={submitPhone} loading={loading} style={{ minHeight: 60, borderRadius: 16 }} />
-              <LegalLinks style={{ marginTop: 8 }} />
+              <Button title="Devam" onPress={submitPhone} loading={loading} disabled={!phoneValid} style={{ minHeight: 60, borderRadius: 16 }} />
+              <TextLink title="Yönetici girişine geç" onPress={() => router.replace("/admin-login")} />
+              <LegalLinks />
             </>
           )}
 
           {step === "create-password" && (
             <>
-              <Title sub={`Merhaba ${firstName}. Bundan sonraki girişlerde bu şifreyi kullanacaksınız.`}>Şifre oluşturun</Title>
-              <InfoBox message="Şifrenizi kaydettiğinizde hesabınız bu telefona bağlanır. Başka bir telefondan giriş yapmak için okul yönetiminin cihazınızı sıfırlaması gerekir." />
-              <Field label="Şifre (en az 8 karakter)" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
+              <Title>Şifre oluşturun</Title>
+              <InfoBox message="Şifreyi kaydettiğinizde hesabınız bu telefona bağlanır. Başka telefondan girmek için okul yönetimine başvurmanız gerekir." />
+              <Field label="Şifre (en az 8 karakter)" value={password} onChangeText={setPassword} autoFocus secureTextEntry autoComplete="new-password" textContentType="newPassword" />
               <Field label="Şifre (tekrar)" value={password2} onChangeText={setPassword2} secureTextEntry autoComplete="new-password" textContentType="newPassword" onSubmitEditing={submitCreatePassword} />
-              <View style={{ gap: 10, marginBottom: 16 }}>
-                <Rule ok={password.length >= 8} label="En az 8 karakter" />
-                <Rule ok={password.length > 0 && password === password2} label="İki şifre aynı" />
+              <View style={{ gap: 8, marginBottom: 16 }}>
+                <Rule ok={passwordLongEnough} label="En az 8 karakter" />
+                <Rule ok={passwordsMatch} label="İki şifre aynı" />
               </View>
               <ErrorBox message={error} />
               <View style={{ flex: 1, minHeight: 16 }} />
-              <Button title="Şifreyi kaydet ve giriş yap" onPress={submitCreatePassword} loading={loading} style={{ minHeight: 60, borderRadius: 16 }} />
+              <Button title="Şifreyi kaydet ve giriş yap" onPress={submitCreatePassword} loading={loading} disabled={!passwordLongEnough || !passwordsMatch} style={{ minHeight: 60, borderRadius: 16 }} />
             </>
           )}
 
           {step === "password" && (
             <>
-              <Title sub={`Merhaba ${firstName}. Şifrenizi girin.`}>Şifre</Title>
-              <Field label="Şifre" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" onSubmitEditing={submitPassword} />
+              <Title>Şifrenizi girin</Title>
+              <Field label="Şifre" value={password} onChangeText={setPassword} autoFocus secureTextEntry autoComplete="current-password" textContentType="password" onSubmitEditing={submitPassword} />
+              <Text style={{ marginTop: -8, marginBottom: 16, fontSize: 14, lineHeight: 20, color: colors.inkSoft }}>Şifrenizi unuttuysanız okul yönetiminden sıfırlama isteyin.</Text>
               <ErrorBox message={error} />
               <View style={{ flex: 1, minHeight: 16 }} />
-              <Button title="Giriş yap" onPress={submitPassword} loading={loading} style={{ minHeight: 60, borderRadius: 16 }} />
-              <Text style={{ marginTop: 14, fontSize: 13, lineHeight: 19, color: colors.inkSoft, textAlign: "center" }}>Şifrenizi unuttuysanız okul yönetiminden şifre sıfırlaması isteyin.</Text>
+              <Button title="Giriş yap" onPress={submitPassword} loading={loading} disabled={password.length === 0} style={{ minHeight: 60, borderRadius: 16 }} />
             </>
           )}
         </ScrollView>
@@ -132,18 +143,12 @@ export default function StudentLogin() {
   );
 }
 
-// Şifre kuralı göstergesi (yalnızca görsel; doğrulama yukarıdaki submit içinde yapılır).
+// Şifre kuralı göstergesi (yalnızca görsel): sağlandığında yanında küçük bir tik çıkar, yuvarlak yoktur.
 function Rule({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      {ok ? (
-        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" }}>
-          <IconCheck size={14} color={colors.white} />
-        </View>
-      ) : (
-        <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: "#9AA39E" }} />
-      )}
-      <Text style={{ fontSize: 15, color: ok ? colors.brandDark : colors.inkSoft }}>{label}</Text>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View style={{ width: 16 }}>{ok ? <IconCheck size={16} color={colors.brand} /> : null}</View>
+      <Text style={{ fontSize: 14, color: ok ? colors.brand : colors.inkSoft }}>{label}</Text>
     </View>
   );
 }
