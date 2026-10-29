@@ -60,6 +60,7 @@ export function Button({
   style?: ViewStyle;
 }) {
   const v = buttonVariants[variant];
+  const inactive = disabled && !loading;
   return (
     <Pressable
       accessibilityRole="button"
@@ -68,12 +69,13 @@ export function Button({
       style={({ pressed }) => [
         styles.btn,
         v.box,
-        (disabled || loading) && { opacity: 0.45 },
-        pressed && (variant === "primary" ? { backgroundColor: colors.brandDark } : { opacity: 0.75 }),
+        loading && { opacity: 0.45 },
+        inactive && styles.btnInactive,
+        pressed && !inactive && (variant === "primary" ? { backgroundColor: colors.brandDark } : { opacity: 0.75 }),
         style,
       ]}
     >
-      {loading ? <ActivityIndicator color={v.text} /> : <Text style={[styles.btnText, { color: v.text }]}>{title}</Text>}
+      {loading ? <ActivityIndicator color={v.text} /> : <Text style={[styles.btnText, { color: inactive ? colors.muted : v.text }]}>{title}</Text>}
     </Pressable>
   );
 }
@@ -129,23 +131,18 @@ export function ErrorBox({ message }: { message?: string | null }) {
   );
 }
 
-export function InfoBox({ message, tone = "info" }: { message: string; tone?: "info" | "warn" }) {
-  const warn = tone === "warn";
+export function InfoBox({ message }: { message: string }) {
   return (
-    <View style={[styles.infoBox, warn && { backgroundColor: colors.warnSoft }]}>
-      <View style={[styles.boxDot, { backgroundColor: warn ? colors.warn : colors.brand }]}>
-        <Text style={styles.boxDotText}>{warn ? "!" : "i"}</Text>
+    <View style={styles.infoBox}>
+      <View style={[styles.boxDot, { backgroundColor: colors.brand }]}>
+        <Text style={styles.boxDotText}>i</Text>
       </View>
-      <Text style={{ flex: 1, color: warn ? colors.warnInk : colors.brandDark, fontSize: 14, lineHeight: 20 }}>{message}</Text>
+      <Text style={{ flex: 1, color: colors.brandDark, fontSize: 14, lineHeight: 20 }}>{message}</Text>
     </View>
   );
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
-  return <View style={[styles.card, style]}>{children}</View>;
-}
-
-export function TopBar({ title, onBack, right }: { title?: string; onBack?: () => void; right?: React.ReactNode }) {
+export function TopBar({ title, step, onBack }: { title?: string; step?: string; onBack?: () => void }) {
   return (
     <View style={styles.topBar}>
       {onBack ? (
@@ -162,8 +159,17 @@ export function TopBar({ title, onBack, right }: { title?: string; onBack?: () =
         <View style={{ width: 48 }} />
       )}
       {title ? <Text style={styles.topBarTitle}>{title}</Text> : <View />}
-      <View style={{ minWidth: 48, alignItems: "flex-end" }}>{right}</View>
+      <View style={{ minWidth: 48, alignItems: "flex-end" }}>{step ? <Text style={styles.topBarStep}>{step}</Text> : null}</View>
     </View>
+  );
+}
+
+// Ana düğmenin altındaki küçük, koyu gri, altı çizili bağlantı (ikincil seçenekler için).
+export function TextLink({ title, onPress, style }: { title: string; onPress: () => void; style?: ViewStyle }) {
+  return (
+    <Pressable accessibilityRole="link" onPress={onPress} hitSlop={8} style={[{ alignSelf: "center", paddingVertical: 12 }, style]}>
+      <Text style={styles.textLink}>{title}</Text>
+    </Pressable>
   );
 }
 
@@ -182,23 +188,52 @@ export function LegalLinks({ style }: { style?: ViewStyle }) {
   );
 }
 
-type PillTone = "brand" | "neutral" | "exit" | "warn" | "danger";
+type OptionIcon = React.ComponentType<{ size?: number; color?: string }>;
 
-const pillTones: Record<PillTone, { bg: string; fg: string; dot: string }> = {
-  brand: { bg: colors.brandSoft, fg: colors.brandDark, dot: colors.brand },
-  neutral: { bg: colors.lineSoft, fg: colors.inkSoft, dot: colors.muted },
-  exit: { bg: colors.exitSoft, fg: colors.exitInk, dot: colors.exit },
-  warn: { bg: colors.warnSoft, fg: colors.warnInk, dot: colors.warn },
-  danger: { bg: colors.dangerSoft, fg: colors.dangerInk, dot: colors.danger },
-};
+// Seçim yuvarlağı: seçiliyken ana renkle dolu, içinde beyaz nokta.
+function Radio({ selected, style }: { selected: boolean; style?: ViewStyle }) {
+  return <View style={[styles.radio, selected && styles.radioSelected, style]}>{selected ? <View style={styles.radioDot} /> : null}</View>;
+}
 
-export function Pill({ label, tone = "neutral" }: { label: string; tone?: PillTone }) {
-  const t = pillTones[tone];
+// Seçilebilir kart (iki eşit seçenek, yan yana): seçili kartın çerçevesi ana renk olur.
+export function OptionCard({ title, subtitle, icon: Icon, selected, onPress }: { title: string; subtitle: string; icon: OptionIcon; selected: boolean; onPress: () => void }) {
   return (
-    <View style={[styles.pill, { backgroundColor: t.bg }]}>
-      <View style={[styles.pillDot, { backgroundColor: t.dot }]} />
-      <Text style={[styles.pillText, { color: t.fg }]}>{label}</Text>
-    </View>
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.optionCard, selected && styles.optionCardSelected, pressed && { opacity: 0.85 }]}
+    >
+      <Radio selected={selected} style={{ position: "absolute", top: 16, right: 16 }} />
+      <View style={[styles.optionIcon, selected && { backgroundColor: colors.brandSoft }]}>
+        <Icon size={28} color={selected ? colors.brand : colors.inkSoft} />
+      </View>
+      <View style={{ gap: 4 }}>
+        <Text style={styles.optionTitle}>{title}</Text>
+        <Text style={styles.optionSub}>{subtitle}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+// Seçilebilir satır (liste halinde seçenekler): solda ikon, ortada başlık, sağda seçim yuvarlağı.
+export function OptionRow({ title, subtitle, icon: Icon, selected, onPress }: { title: string; subtitle?: string; icon: OptionIcon; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.optionRow, selected && styles.optionCardSelected, pressed && { opacity: 0.85 }]}
+    >
+      <View style={[styles.optionIcon, selected && { backgroundColor: colors.brandSoft }]}>
+        <Icon size={28} color={selected ? colors.brand : colors.inkSoft} />
+      </View>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text style={styles.optionTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.optionSub}>{subtitle}</Text> : null}
+      </View>
+      <Radio selected={selected} />
+    </Pressable>
   );
 }
 
@@ -208,6 +243,7 @@ export const styles = StyleSheet.create({
   sub: { marginTop: 8, fontSize: 16, color: colors.inkSoft, lineHeight: 23 },
   btn: { minHeight: 56, borderRadius: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 18 },
   btnText: { fontSize: 17, fontWeight: "700" },
+  btnInactive: { backgroundColor: colors.line, borderColor: colors.line },
   label: { fontSize: 14, fontWeight: "700", color: colors.ink, marginBottom: 8 },
   input: {
     minHeight: 54,
@@ -230,10 +266,17 @@ export const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 48, marginBottom: 20 },
   backBtn: { width: 48, height: 48, marginLeft: -12, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   topBarTitle: { fontSize: 15, fontWeight: "700", color: colors.inkSoft },
-  pill: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
-  pillDot: { width: 8, height: 8, borderRadius: 4 },
-  pillText: { fontSize: 13, fontWeight: "700" },
-  card: { backgroundColor: colors.white, borderRadius: 20, borderWidth: 1, borderColor: colors.line, padding: 20 },
+  topBarStep: { fontSize: 15, fontWeight: "700", color: colors.inkSoft },
+  optionCard: { flex: 1, minHeight: 200, gap: 16, padding: 16, borderRadius: 20, borderWidth: 2, borderColor: colors.line, backgroundColor: colors.white },
+  optionRow: { flexDirection: "row", alignItems: "center", gap: 16, padding: 16, borderRadius: 20, borderWidth: 2, borderColor: colors.line, backgroundColor: colors.white },
+  optionCardSelected: { borderColor: colors.brand },
+  optionIcon: { width: 56, height: 56, borderRadius: 16, backgroundColor: colors.lineSoft, alignItems: "center", justifyContent: "center" },
+  optionTitle: { fontSize: 20, fontWeight: "800", color: colors.ink },
+  optionSub: { fontSize: 14, lineHeight: 20, color: colors.inkSoft },
+  radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.lineStrong, alignItems: "center", justifyContent: "center" },
+  radioSelected: { borderColor: colors.brand, backgroundColor: colors.brand },
+  radioDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.white },
   legalLinks: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 10, paddingVertical: 12 },
+  textLink: { fontSize: 15, fontWeight: "600", color: colors.inkSoft, textDecorationLine: "underline" },
   legalLink: { fontSize: 13, fontWeight: "600", color: colors.inkSoft, textDecorationLine: "underline" },
 });

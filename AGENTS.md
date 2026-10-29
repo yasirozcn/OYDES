@@ -174,7 +174,7 @@ FenBahceleri_IzmırFen/
     ├── modules/kiosk-beacon/ ⏳            Android BLE yayın modülü (Kotlin) + iOS taslağı
     ├── tools/ ⏳                           mac-kiosk-beacon.swift · ios-kur.sh · android-apk.sh
     └── src/
-        ├── app/                           _layout ✅ · index ✅ · student-login ✅ (telefon) · student-home ✅ · scan ⏳
+        ├── app/                           _layout ✅ · index ✅ (açılış) · welcome ✅ · student-login ✅ (telefon) · student-home ✅ · scan ⏳
         │                                  admin-login ⏳ · kiosk-select ⏳ · kiosk/[id] ⏳
         ├── components/ ⏳                  ui.tsx · icons.tsx · BluetoothGate.tsx
         └── lib/                           config ✅ · api ⏳ · session ⏳ · device ⏳ · protocol ⏳ · ble ⏳
