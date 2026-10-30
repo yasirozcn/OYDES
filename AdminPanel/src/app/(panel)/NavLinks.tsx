@@ -11,6 +11,7 @@ const links: { href: string; label: string; icon: IconName }[] = [
   { href: "/kiosklar", label: "Kiosklar", icon: "qr" },
   { href: "/denemeler", label: "Reddedilen okutmalar", icon: "shieldAlert" },
   { href: "/whatsapp", label: "WhatsApp kayıtları", icon: "message" },
+  { href: "/geri-bildirimler", label: "Geri bildirimler", icon: "messageSquare" },
   { href: "/denetim", label: "Denetim kaydı", icon: "clipboard" },
 ];
 

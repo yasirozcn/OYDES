@@ -1,14 +1,17 @@
-// Giriş-çıkışlar: son 300 hareket. Hareket inceleme (Uygun/Şüpheli) yok — kök AGENTS.md §0.2.
+// Giriş-çıkışlar: tüm hareketler, sayfa başına 50 (?sayfa=N). Hareket inceleme (Uygun/Şüpheli) yok — kök AGENTS.md §0.2.
 import { DirectionBadge, SourceBadge } from "@/components/Badges";
-import { listEvents } from "@/lib/db/repo";
+import { PAGE_SIZE, Pagination, pageFrom } from "@/components/Pagination";
+import { countEvents, listEvents } from "@/lib/db/repo";
 import { requireWebAdmin } from "@/lib/session";
 import { formatDateTime } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
-export default async function EventsPage() {
+export default async function EventsPage({ searchParams }: { searchParams: Promise<{ sayfa?: string | string[] }> }) {
   await requireWebAdmin();
-  const events = await listEvents({ limit: 300 });
+  const total = await countEvents();
+  const { page, totalPages, offset } = pageFrom((await searchParams).sayfa, total);
+  const events = await listEvents({ limit: PAGE_SIZE, offset });
 
   return (
     <div className="space-y-4">
@@ -55,6 +58,7 @@ export default async function EventsPage() {
           </tbody>
         </table>
       </div>
+      <Pagination path="/hareketler" page={page} totalPages={totalPages} total={total} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import type {
   AuditLog,
   Device,
   Direction,
+  Feedback,
   Guardian,
   Kiosk,
   ScanAttempt,
@@ -395,7 +396,7 @@ export async function reviewEvent(eventId: string, status: AttendanceEvent["revi
 export type EventRow = AttendanceEvent & { student: Pick<Student, "id" | "firstName" | "lastName" | "className" | "schoolNo">; kioskName: string | null };
 
 export async function listEvents(
-  filter: { studentId?: string; review?: AttendanceEvent["reviewStatus"]; onlyFlagged?: boolean; kioskId?: string; since?: string; limit?: number } = {},
+  filter: { studentId?: string; review?: AttendanceEvent["reviewStatus"]; onlyFlagged?: boolean; kioskId?: string; since?: string; limit?: number; offset?: number } = {},
 ): Promise<EventRow[]> {
   const where: string[] = [];
   const params: unknown[] = [];
@@ -408,15 +409,15 @@ export async function listEvents(
   if (filter.onlyFlagged) where.push("(e.review_status = 'SUSPICIOUS' OR e.source <> 'APP')");
   if (filter.kioskId) add("e.kiosk_id = ?", filter.kioskId);
   if (filter.since) add("e.occurred_at > ?", filter.since);
-  params.push(filter.limit ?? 200);
+  params.push(filter.limit ?? 200, filter.offset ?? 0);
   const rows = await q<AttendanceEvent & { sFirstName: string; sLastName: string; sClassName: string; sSchoolNo: string; kioskName: string | null }>(
     `SELECT e.*, s.first_name AS s_first_name, s.last_name AS s_last_name, s.class_name AS s_class_name, s.school_no AS s_school_no, k.name AS kiosk_name
      FROM attendance_events e
      JOIN students s ON s.id = e.student_id
      LEFT JOIN kiosks k ON k.id = e.kiosk_id
      ${where.length ? "WHERE " + where.join(" AND ") : ""}
-     ORDER BY e.occurred_at DESC
-     LIMIT $${params.length}`,
+     ORDER BY e.occurred_at DESC, e.id
+     LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,
   );
   return rows.map(({ sFirstName, sLastName, sClassName, sSchoolNo, kioskName, ...e }) => ({
@@ -424,6 +425,12 @@ export async function listEvents(
     student: { id: e.studentId, firstName: sFirstName, lastName: sLastName, className: sClassName, schoolNo: sSchoolNo },
     kioskName,
   }));
+}
+
+/** Sayfalama için toplam hareket sayısı (Giriş-çıkışlar sayfası). */
+export async function countEvents(): Promise<number> {
+  const [r] = await q<{ count: number }>("SELECT count(*)::int AS count FROM attendance_events");
+  return r.count;
 }
 
 export type AttemptRow = ScanAttempt & { studentName: string | null; kioskName: string | null };
@@ -455,16 +462,21 @@ export function listKioskAttempts(kioskId: string, since: string, limit = 20): P
   );
 }
 
-export function listWhatsAppMessages(limit = 200): Promise<(WhatsAppMessage & { studentName: string })[]> {
+export function listWhatsAppMessages(limit = 200, offset = 0): Promise<(WhatsAppMessage & { studentName: string })[]> {
   return q(
     `SELECT m.*, COALESCE(s.first_name || ' ' || s.last_name, '-') AS student_name
      FROM wp_messages m
      LEFT JOIN attendance_events e ON e.id = m.event_id
      LEFT JOIN students s ON s.id = e.student_id
-     ORDER BY m.created_at DESC
-     LIMIT $1`,
-    [limit],
+     ORDER BY m.created_at DESC, m.id
+     LIMIT $1 OFFSET $2`,
+    [limit, offset],
   );
+}
+
+export async function countWhatsAppMessages(): Promise<number> {
+  const [r] = await q<{ count: number }>("SELECT count(*)::int AS count FROM wp_messages");
+  return r.count;
 }
 
 export async function dashboardStats(): Promise<{ total: number; inside: number; outside: number; todayEvents: number; unreviewed: number; rejectedToday: number }> {
@@ -480,6 +492,31 @@ export async function dashboardStats(): Promise<{ total: number; inside: number;
        (SELECT count(*) FROM scan_attempts, t WHERE created_at >= t.start AND result = 'REJECTED')::int AS rejected_today`,
   );
   return r as Awaited<ReturnType<typeof dashboardStats>>;
+}
+
+// ---------------------------------------------------------------- geri bildirimler
+
+export async function createFeedback(studentId: string, message: string): Promise<Feedback> {
+  const feedback: Feedback = { id: newId("fbk"), studentId, message, status: "TODO", createdAt: nowIso(), completedAt: null, completedBy: null };
+  await tx((c) => insertRow(c, "feedbacks", feedback));
+  return feedback;
+}
+
+export type FeedbackRow = Feedback & { student: Pick<Student, "firstName" | "lastName" | "className" | "phone"> };
+
+export async function listFeedbacks(): Promise<FeedbackRow[]> {
+  const rows = await q<Feedback & { firstName: string; lastName: string; className: string; phone: string | null }>(
+    `SELECT f.*, s.first_name, s.last_name, s.class_name, s.phone
+     FROM feedbacks f JOIN students s ON s.id = f.student_id
+     ORDER BY f.created_at DESC`,
+  );
+  return rows.map(({ firstName, lastName, className, phone, ...f }) => ({ ...f, student: { firstName, lastName, className, phone } }));
+}
+
+/** Yalnızca "Yapılacak" durumundaki geri bildirimi tamamlar; değiştiyse true. */
+export async function completeFeedback(id: string, adminId: string): Promise<boolean> {
+  const rows = await q("UPDATE feedbacks SET status = 'DONE', completed_at = now(), completed_by = $2 WHERE id = $1 AND status = 'TODO' RETURNING id", [id, adminId]);
+  return rows.length > 0;
 }
 
 // ---------------------------------------------------------------- denetim kaydı

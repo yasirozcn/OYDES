@@ -19,6 +19,10 @@ const paths = {
   plus: "M5 12h14M12 5v14",
   key: "M7.5 10a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11zM21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3",
   smartphone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM12 18h.01",
+  messageSquare: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5",
+  check: "M20 6 9 17l-5-5",
+  chevronLeft: "m15 18-6-6 6-6",
+  chevronRight: "m9 18 6-6-6-6",
   trash: "M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6",
 } as const;
 

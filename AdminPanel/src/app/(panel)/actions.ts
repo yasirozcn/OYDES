@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   addAudit,
+  completeFeedback,
   createKiosk,
   createKioskAccount,
   createStudent,
@@ -284,4 +285,13 @@ export async function resetKioskAccountPasswordAction(_prev: { error?: string; o
   await addAudit({ adminUserId: admin.id, action: "KIOSK_ACCOUNT_PASSWORD_RESET", entity: "admin_user", entityId: accountId, beforeValue: null, afterValue: null });
   revalidatePath("/kiosklar");
   return { ok: true };
+}
+
+// Geri bildirimi "Tamamlandı" bölümüne taşır.
+export async function completeFeedbackAction(form: FormData) {
+  const admin = await requireWebAdmin();
+  const feedbackId = String(form.get("feedbackId"));
+  if (!(await completeFeedback(feedbackId, admin.id))) return;
+  await addAudit({ adminUserId: admin.id, action: "FEEDBACK_COMPLETED", entity: "feedback", entityId: feedbackId, beforeValue: { status: "TODO" }, afterValue: { status: "DONE" } });
+  revalidatePath("/geri-bildirimler");
 }

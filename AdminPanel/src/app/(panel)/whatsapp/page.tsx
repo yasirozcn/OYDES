@@ -1,14 +1,17 @@
-// WhatsApp kayıtları: velilere yazılan son 300 mesaj ve durumları. Test modunda (mock) gerçek gönderim yoktur.
+// WhatsApp kayıtları: velilere yazılan mesajlar ve durumları, sayfa başına 50 (?sayfa=N). Test modunda (mock) gerçek gönderim yoktur.
 import { config } from "@/lib/config";
-import { listWhatsAppMessages } from "@/lib/db/repo";
+import { PAGE_SIZE, Pagination, pageFrom } from "@/components/Pagination";
+import { countWhatsAppMessages, listWhatsAppMessages } from "@/lib/db/repo";
 import { requireWebAdmin } from "@/lib/session";
 import { formatDateTime } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
-export default async function WhatsAppPage() {
+export default async function WhatsAppPage({ searchParams }: { searchParams: Promise<{ sayfa?: string | string[] }> }) {
   await requireWebAdmin();
-  const rows = await listWhatsAppMessages(300);
+  const total = await countWhatsAppMessages();
+  const { page, totalPages, offset } = pageFrom((await searchParams).sayfa, total);
+  const rows = await listWhatsAppMessages(PAGE_SIZE, offset);
   return (
     <div className="space-y-4">
       <div>
@@ -52,6 +55,7 @@ export default async function WhatsAppPage() {
           </tbody>
         </table>
       </div>
+      <Pagination path="/whatsapp" page={page} totalPages={totalPages} total={total} />
     </div>
   );
 }

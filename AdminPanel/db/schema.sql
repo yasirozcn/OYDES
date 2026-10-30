@@ -160,4 +160,16 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 CREATE INDEX IF NOT EXISTS audit_logs_created_idx ON audit_logs (created_at DESC);
 
+-- Öğrenci uygulamasından gönderilen geri bildirimler; panelde "Yapılacak" / "Tamamlandı" olarak izlenir.
+CREATE TABLE IF NOT EXISTS feedbacks (
+  id            text PRIMARY KEY,
+  student_id    text NOT NULL REFERENCES students (id) ON DELETE CASCADE,
+  message       text NOT NULL,
+  status        text NOT NULL DEFAULT 'TODO' CHECK (status IN ('TODO', 'DONE')),
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  completed_at  timestamptz,
+  completed_by  text
+);
+CREATE INDEX IF NOT EXISTS feedbacks_created_idx ON feedbacks (created_at DESC);
+
 COMMIT;

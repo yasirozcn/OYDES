@@ -164,8 +164,8 @@ FenBahceleri_IzmırFen/
 │           ├── layout.tsx ✅ · globals.css ✅ · page.tsx ✅ (GEÇİCİ) · api/health/ ✅
 │           ├── login/ ⏳                   page · LoginForm · actions
 │           ├── (panel)/ ⏳                 layout · NavLinks · actions · page (Canlı durum) · hareketler · ogrenciler (+StudentForms)
-│           │                              kiosklar (+AccountForms, DeleteKioskButton) · denemeler · whatsapp · denetim
-│           └── api/mobile/ ⏳              config · student/{check-phone,set-password,login,me} · scan · admin/login · kiosks[/:id/{start,feed}]
+│           │                              kiosklar (+AccountForms, DeleteKioskButton) · denemeler · whatsapp · geri-bildirimler · denetim
+│           └── api/mobile/ ⏳              config · student/{check-phone,set-password,login,me} · scan · feedback · admin/login · kiosks[/:id/{start,feed}]
 │
 └── QrScannerApp/                          Expo SDK 57 — öğrenci + kiosk uygulaması
     ├── AGENTS.md, CLAUDE.md ✅ · README.md ⏳ · CIHAZ_TESTI.md ⏳ · TESTFLIGHT.md ⏳
@@ -241,6 +241,7 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 | `GET /student/me` | öğrenci | — | `{ student: {…, presenceStatus: "IN"\|"OUT"}, needsDirection: boolean, nextDirection: "IN"\|"OUT"\|null, events: [{ id, direction, occurredAt, kioskName }] }` (son 10) · `presenceStatus` öğrencinin herhangi bir kapıdaki son hareketidir; `needsDirection` yalnızca hiç kaydı yokken `true` (başka bir kapıdaki ilk okutmada sunucu `DIRECTION_REQUIRED` döner) · `401 DEVICE_REVOKED` |
 | `POST /scan` | öğrenci | `{ qr, ble: { token, rssi } \| null, timestamp, signature, direction?: "IN"\|"OUT"\|null }` | `{ eventId, direction, occurredAt, time: "HH:mm", duplicate, studentName, bleVerified: boolean\|null }` · Red: `422 { code: <RejectReason> }` |
 | `POST /admin/login` | — | `{ email, password }` | `{ token, admin: { id, fullName } }` — ADMIN veya KIOSK rolü |
+| `POST /feedback` | öğrenci | `{ message (1–1000 karakter) }` | `201 { id }` · panelde "Geri bildirimler" sayfasında görünür · `401 DEVICE_REVOKED`, 5 istek / 10 dk |
 | `GET /kiosks` | kiosk-admin | — | `{ kiosks: [{ id, name }] }` (yalnızca aktifler) |
 | `POST /kiosks/:id/start` | kiosk-admin | — | `{ kiosk: { id, name }, secret, slotSeconds, bleServiceUuid, bleRequired, serverTime }` |
 | `GET /kiosks/:id/feed?since=ISO` | kiosk-admin | — | `{ serverTime, events: [{ id, name, className, direction, occurredAt, time }], attempts: [{ id, time, studentName, result, rejectReason, bleToken, bleRssi, bleOk }] }` |
@@ -361,7 +362,7 @@ Doğrulama hatası: `400 { error, code: "VALIDATION", issues }`. Sık deneme: `4
 # 1) AdminPanel — ortak veritabanına bağlanma (Docker gerekmez)
 cd AdminPanel && npm install
 cp .env.example .env.local                  # DATABASE_URL'yi proje sahibinin verdiği adresle doldurun ve kendi AUTH_SECRET'inizi üretin (§5.1)
-npm run db:check                            # "Bağlandı … SSL: açık" ve 11 tablo görmelisiniz
+npm run db:check                            # "Bağlandı … SSL: açık" ve 12 tablo görmelisiniz (şemaya `feedbacks` eklendi)
 npm run dev                                 # http://localhost:3000 → "Ortak veritabanına bağlı"; http://localhost:3000/api/health → JSON
 
 # 2) Mobil (ayrı terminal) — telefon, bilgisayarınızdaki AdminPanel'e bağlanır

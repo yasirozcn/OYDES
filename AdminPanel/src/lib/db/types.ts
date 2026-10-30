@@ -144,3 +144,15 @@ export interface AuditLog {
   afterValue: unknown;
   createdAt: string;
 }
+
+export type FeedbackStatus = "TODO" | "DONE";
+
+export interface Feedback {
+  id: string;
+  studentId: string;
+  message: string;
+  status: FeedbackStatus;
+  createdAt: string;
+  completedAt: string | null;
+  completedBy: string | null;
+}
