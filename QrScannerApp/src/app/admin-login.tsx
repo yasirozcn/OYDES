@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Text, useWindowDimensions, View } from "react-native";
-import { Button, ErrorBox, Field, KeyboardForm, LegalLinks, Logo, Screen, TextLink, Title, TopBar } from "@/components/ui";
+import { Button, ErrorBox, Field, KeyboardForm, Logo, Screen, Title, TopBar } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { useSession } from "@/lib/session";
@@ -55,17 +55,11 @@ export default function AdminLogin() {
         style={{ width: "100%", maxWidth: 440, alignSelf: "center" }}
         contentStyle={wide ? { justifyContent: "center" } : undefined}
         footer={
-          <>
-            {step === "email" ? (
-              <>
-                <Button title="Devam" onPress={() => setStep("password")} disabled={!EMAIL_PATTERN.test(email.trim())} style={button} />
-                <TextLink title="Öğrenci girişine dön" onPress={() => router.replace("/student-login")} />
-              </>
-            ) : (
-              <Button title="Giriş yap" onPress={submit} loading={loading} disabled={password.length === 0} style={button} />
-            )}
-            <LegalLinks />
-          </>
+          step === "email" ? (
+            <Button title="Devam" onPress={() => setStep("password")} disabled={!EMAIL_PATTERN.test(email.trim())} style={button} />
+          ) : (
+            <Button title="Giriş yap" onPress={submit} loading={loading} disabled={password.length === 0} style={button} />
+          )
         }
       >
         {step === "email" ? (

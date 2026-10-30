@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Platform, Text, View } from "react-native";
 import { IconCheck } from "@/components/icons";
-import { Button, ErrorBox, Field, InfoBox, KeyboardForm, LegalLinks, Screen, TextLink, Title, TopBar } from "@/components/ui";
+import { Button, ErrorBox, Field, InfoBox, KeyboardForm, Screen, Title, TopBar } from "@/components/ui";
 import { api, ApiError, type AuthResponse } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { getDeviceIdentity } from "@/lib/device";
@@ -97,11 +97,7 @@ export default function StudentLogin() {
   const button = { minHeight: 60, borderRadius: 16 };
   const footer =
     step === "phone" ? (
-      <>
-        <Button title="Devam" onPress={submitPhone} loading={loading} disabled={!phoneValid} style={button} />
-        <TextLink title="Yönetici girişine geç" onPress={() => router.replace("/admin-login")} />
-        <LegalLinks />
-      </>
+      <Button title="Devam" onPress={submitPhone} loading={loading} disabled={!phoneValid} style={button} />
     ) : step === "create-password" ? (
       <Button title="Şifreyi kaydet ve giriş yap" onPress={submitCreatePassword} loading={loading} disabled={!passwordLongEnough || !passwordsMatch} style={button} />
     ) : (

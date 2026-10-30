@@ -17,8 +17,13 @@ export function Screen({ children, style, padded = true }: { children?: React.Re
   );
 }
 
+// İzmir Fen Lisesi amblemi (karşılama ekranında uygulama logosunun karşısında, aynı boyutta).
+export function SchoolCrest({ size = 56 }: { size?: number }) {
+  return <Image source={require("../../assets/ifl-logo.png")} style={{ width: size, height: size }} resizeMode="contain" accessibilityLabel="İzmir Fen Lisesi amblemi" />;
+}
+
 // Okul logosu: beyaz, köşeleri yuvarlatılmış kutuda (yeşil zeminde de okunur).
-export function Logo({ size = 44 }: { size?: number }) {
+export function Logo({ size = 56 }: { size?: number }) {
   return (
     <View style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.lineSoft, alignItems: "center", justifyContent: "center" }}>
       <Image source={require("../../assets/logo.png")} style={{ width: size * 0.72, height: size * 0.72 }} resizeMode="contain" accessibilityLabel="İzmir Fen logosu" />
@@ -165,7 +170,7 @@ export function TopBar({ title, step, onBack }: { title?: string; step?: string;
 }
 
 // Klavyenin ekranda kapladığı yükseklik (kapalıyken 0). Ekran açıldığında klavye zaten açıksa o anki yükseklikle başlar.
-function useKeyboardHeight(): number {
+export function useKeyboardHeight(): number {
   const [height, setHeight] = useState(() => (Keyboard.isVisible() ? (Keyboard.metrics()?.height ?? 0) : 0));
   useEffect(() => {
     const ios = Platform.OS === "ios";
