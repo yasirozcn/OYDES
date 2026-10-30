@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { ActivityIndicator, Image, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Image, Keyboard, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconBack, IconEye, IconEyeOff } from "./icons";
 import { API_URL, colors } from "@/lib/config";
 
@@ -160,6 +160,38 @@ export function TopBar({ title, step, onBack }: { title?: string; step?: string;
       )}
       {title ? <Text style={styles.topBarTitle}>{title}</Text> : <View />}
       <View style={{ minWidth: 48, alignItems: "flex-end" }}>{step ? <Text style={styles.topBarStep}>{step}</Text> : null}</View>
+    </View>
+  );
+}
+
+// Klavyenin ekranda kapladığı yükseklik (kapalıyken 0). Ekran açıldığında klavye zaten açıksa o anki yükseklikle başlar.
+function useKeyboardHeight(): number {
+  const [height, setHeight] = useState(() => (Keyboard.isVisible() ? (Keyboard.metrics()?.height ?? 0) : 0));
+  useEffect(() => {
+    const ios = Platform.OS === "ios";
+    const show = Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", (e) => setHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(ios ? "keyboardWillHide" : "keyboardDidHide", () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
+}
+
+// Giriş formları: alanlar kayar, ana düğme (footer) altta sabit; klavye açılınca düğme klavyenin hemen üstüne çıkar, alanlar onun üstünde kalır.
+// KeyboardAvoidingView kendi konumunu ölçer ve ekran açılış animasyonunda yanlış ölçebildiği için klavye yüksekliği doğrudan kullanılır.
+// iOS'ta yükseklik alttaki güvenli alanı (ana ekran çizgisi) da içerir; Android'de React Native gezinme çubuğunu zaten düşer.
+export function KeyboardForm({ children, footer, style, contentStyle }: { children: React.ReactNode; footer: React.ReactNode; style?: ViewStyle; contentStyle?: ViewStyle }) {
+  const keyboard = useKeyboardHeight();
+  const insets = useSafeAreaInsets();
+  const lift = Math.max(0, Platform.OS === "ios" ? keyboard - insets.bottom : keyboard);
+  return (
+    <View style={[{ flex: 1, paddingBottom: lift }, style]}>
+      <ScrollView keyboardShouldPersistTaps="always" style={{ flex: 1 }} contentContainerStyle={[{ flexGrow: 1, paddingBottom: 16 }, contentStyle]}>
+        {children}
+      </ScrollView>
+      {footer}
     </View>
   );
 }

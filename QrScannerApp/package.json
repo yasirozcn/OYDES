@@ -4,7 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@noble/hashes": "^2.4.0",
-    "expo": "~57.0.30",
+    "expo": "~57.0.31",
     "expo-build-properties": "~57.0.22",
     "expo-camera": "~57.0.6",
     "expo-constants": "~57.0.20",

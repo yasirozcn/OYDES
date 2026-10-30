@@ -2,27 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Icon, type IconName } from "@/components/Icon";
 
-const links = [
-  { href: "/", label: "Canlı durum" },
-  { href: "/hareketler", label: "Giriş-çıkışlar" },
-  { href: "/ogrenciler", label: "Öğrenciler" },
-  { href: "/kiosklar", label: "Kiosklar" },
-  { href: "/denemeler", label: "Reddedilen okutmalar" },
-  { href: "/whatsapp", label: "WhatsApp kayıtları" },
-  { href: "/denetim", label: "Denetim kaydı" },
+const links: { href: string; label: string; icon: IconName }[] = [
+  { href: "/", label: "Canlı durum", icon: "dashboard" },
+  { href: "/hareketler", label: "Giriş-çıkışlar", icon: "arrowUpDown" },
+  { href: "/ogrenciler", label: "Öğrenciler", icon: "users" },
+  { href: "/kiosklar", label: "Kiosklar", icon: "qr" },
+  { href: "/denemeler", label: "Reddedilen okutmalar", icon: "shieldAlert" },
+  { href: "/whatsapp", label: "WhatsApp kayıtları", icon: "message" },
+  { href: "/denetim", label: "Denetim kaydı", icon: "clipboard" },
 ];
-
-// Menü ikonları (yalnızca görünüm; 24×24 çizgi ikon yolları)
-const icons: Record<string, string> = {
-  "/": "M3 12h4l3-8 4 16 3-8h4",
-  "/hareketler": "M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3",
-  "/ogrenciler": "M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a6 6 0 0112 0v1M16 3.5a4 4 0 010 7M22 21v-1a6 6 0 00-4-5.6",
-  "/kiosklar": "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2",
-  "/denemeler": "M12 21a9 9 0 100-18 9 9 0 000 18zM5.6 5.6l12.8 12.8",
-  "/whatsapp": "M4 5h16v11H8l-4 4z",
-  "/denetim": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5",
-};
 
 export function NavLinks() {
   const path = usePathname();
@@ -35,11 +25,9 @@ export function NavLinks() {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
-            className={`flex h-[42px] items-center gap-3 rounded-[10px] px-3 text-[15px] whitespace-nowrap ${active ? "bg-brand-50 font-bold text-brand-800" : "font-semibold text-slate-900 hover:bg-slate-100"}`}
+            className={`flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm whitespace-nowrap transition-colors ${active ? "bg-brand-50 font-semibold text-brand-800" : "font-medium text-slate-600 hover:bg-slate-100"}`}
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true" className={`h-5 w-5 shrink-0 ${active ? "text-brand-600" : "text-slate-500"}`} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
-              <path d={icons[l.href]} />
-            </svg>
+            <Icon name={l.icon} className={`h-5 w-5 ${active ? "text-brand-600" : "text-slate-500"}`} />
             {l.label}
           </Link>
         );

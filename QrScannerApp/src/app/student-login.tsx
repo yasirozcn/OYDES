@@ -1,8 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import { IconCheck } from "@/components/icons";
-import { Button, ErrorBox, Field, InfoBox, LegalLinks, Screen, TextLink, Title, TopBar } from "@/components/ui";
+import { Button, ErrorBox, Field, InfoBox, KeyboardForm, LegalLinks, Screen, TextLink, Title, TopBar } from "@/components/ui";
 import { api, ApiError, type AuthResponse } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { getDeviceIdentity } from "@/lib/device";
@@ -94,51 +94,55 @@ export default function StudentLogin() {
     }
   };
 
+  const button = { minHeight: 60, borderRadius: 16 };
+  const footer =
+    step === "phone" ? (
+      <>
+        <Button title="Devam" onPress={submitPhone} loading={loading} disabled={!phoneValid} style={button} />
+        <TextLink title="Yönetici girişine geç" onPress={() => router.replace("/admin-login")} />
+        <LegalLinks />
+      </>
+    ) : step === "create-password" ? (
+      <Button title="Şifreyi kaydet ve giriş yap" onPress={submitCreatePassword} loading={loading} disabled={!passwordLongEnough || !passwordsMatch} style={button} />
+    ) : (
+      <Button title="Giriş yap" onPress={submitPassword} loading={loading} disabled={password.length === 0} style={button} />
+    );
+
   return (
     <Screen>
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-        <TopBar step={step === "phone" ? "Adım 1 / 2" : "Adım 2 / 2"} onBack={back} />
-        <ScrollView keyboardShouldPersistTaps="always" contentContainerStyle={{ flexGrow: 1 }}>
-          {step === "phone" && (
-            <>
-              <Title>Telefon numaranızı girin</Title>
-              <Field label="Cep telefonu" placeholder="05XX XXX XX XX" value={phone} onChangeText={(text) => setPhone(formatPhone(text))} autoFocus keyboardType="number-pad" autoComplete="tel" textContentType="telephoneNumber" />
-              <ErrorBox message={error} />
-              <View style={{ flex: 1, minHeight: 24 }} />
-              <Button title="Devam" onPress={submitPhone} loading={loading} disabled={!phoneValid} style={{ minHeight: 60, borderRadius: 16 }} />
-              <TextLink title="Yönetici girişine geç" onPress={() => router.replace("/admin-login")} />
-              <LegalLinks />
-            </>
-          )}
+      <TopBar step={step === "phone" ? "Adım 1 / 2" : "Adım 2 / 2"} onBack={back} />
+      <KeyboardForm footer={footer}>
+        {step === "phone" && (
+          <>
+            <Title>Telefon numaranızı girin</Title>
+            <Field label="Cep telefonu" placeholder="05XX XXX XX XX" value={phone} onChangeText={(text) => setPhone(formatPhone(text))} autoFocus keyboardType="number-pad" autoComplete="tel" textContentType="telephoneNumber" />
+            <ErrorBox message={error} />
+          </>
+        )}
 
-          {step === "create-password" && (
-            <>
-              <Title>Şifre oluşturun</Title>
-              <InfoBox message="Şifreyi kaydettiğinizde hesabınız bu telefona bağlanır. Başka telefondan girmek için okul yönetimine başvurmanız gerekir." />
-              <Field label="Şifre (en az 8 karakter)" value={password} onChangeText={setPassword} autoFocus secureTextEntry autoComplete="new-password" textContentType="newPassword" />
-              <Field label="Şifre (tekrar)" value={password2} onChangeText={setPassword2} secureTextEntry autoComplete="new-password" textContentType="newPassword" onSubmitEditing={submitCreatePassword} />
-              <View style={{ gap: 8, marginBottom: 16 }}>
-                <Rule ok={passwordLongEnough} label="En az 8 karakter" />
-                <Rule ok={passwordsMatch} label="İki şifre aynı" />
-              </View>
-              <ErrorBox message={error} />
-              <View style={{ flex: 1, minHeight: 16 }} />
-              <Button title="Şifreyi kaydet ve giriş yap" onPress={submitCreatePassword} loading={loading} disabled={!passwordLongEnough || !passwordsMatch} style={{ minHeight: 60, borderRadius: 16 }} />
-            </>
-          )}
+        {step === "create-password" && (
+          <>
+            <Title>Şifre oluşturun</Title>
+            <InfoBox message="Şifreyi kaydettiğinizde hesabınız bu telefona bağlanır. Başka telefondan girmek için okul yönetimine başvurmanız gerekir." />
+            <Field label="Şifre (en az 8 karakter)" value={password} onChangeText={setPassword} autoFocus secureTextEntry autoComplete="new-password" textContentType="newPassword" />
+            <Field label="Şifre (tekrar)" value={password2} onChangeText={setPassword2} secureTextEntry autoComplete="new-password" textContentType="newPassword" onSubmitEditing={submitCreatePassword} />
+            <View style={{ gap: 8, marginBottom: 16 }}>
+              <Rule ok={passwordLongEnough} label="En az 8 karakter" />
+              <Rule ok={passwordsMatch} label="İki şifre aynı" />
+            </View>
+            <ErrorBox message={error} />
+          </>
+        )}
 
-          {step === "password" && (
-            <>
-              <Title>Şifrenizi girin</Title>
-              <Field label="Şifre" value={password} onChangeText={setPassword} autoFocus secureTextEntry autoComplete="current-password" textContentType="password" onSubmitEditing={submitPassword} />
-              <Text style={{ marginTop: -8, marginBottom: 16, fontSize: 14, lineHeight: 20, color: colors.inkSoft }}>Şifrenizi unuttuysanız okul yönetiminden sıfırlama isteyin.</Text>
-              <ErrorBox message={error} />
-              <View style={{ flex: 1, minHeight: 16 }} />
-              <Button title="Giriş yap" onPress={submitPassword} loading={loading} disabled={password.length === 0} style={{ minHeight: 60, borderRadius: 16 }} />
-            </>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        {step === "password" && (
+          <>
+            <Title>Şifrenizi girin</Title>
+            <Field label="Şifre" value={password} onChangeText={setPassword} autoFocus secureTextEntry autoComplete="current-password" textContentType="password" onSubmitEditing={submitPassword} />
+            <Text style={{ marginTop: -8, marginBottom: 16, fontSize: 14, lineHeight: 20, color: colors.inkSoft }}>Şifrenizi unuttuysanız okul yönetiminden sıfırlama isteyin.</Text>
+            <ErrorBox message={error} />
+          </>
+        )}
+      </KeyboardForm>
     </Screen>
   );
 }

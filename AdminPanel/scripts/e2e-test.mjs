@@ -17,7 +17,8 @@ const localFormat = (phone) => `0${phone.slice(3, 6)} ${phone.slice(6, 9)} ${pho
 // Testin oluşturduğu kayıtlar — temizlik yalnızca bu kimlikleri siler.
 const student = { id: `stu_${hex(8)}`, phone: testPhone(), firstName: "E2E", lastName: `Test ${suffix}` };
 const otherStudent = { id: `stu_${hex(8)}`, phone: testPhone() };
-const guardianId = `gua_${hex(8)}`;
+// İki veli: her olayda ikisine de WhatsApp mesajı yazılmalı.
+const guardianIds = [`gua_${hex(8)}`, `gua_${hex(8)}`];
 const kiosk = { id: `kiosk_${hex(8)}`, name: `TEST e2e-${suffix}`, secret: hex(32) };
 const disabledKiosk = { id: `kiosk_${hex(8)}`, name: `TEST e2e-${suffix} kapali` };
 // İkinci kapı: giriş-çıkış durumu birinci kapıdan bağımsız olmalı; WhatsApp bildirimi kapalı.
@@ -76,8 +77,8 @@ async function createTestData() {
        ($1, 'E2E-1', $2, $3, $4, 'E2E'), ($5, 'E2E-2', 'E2E', $6, $7, 'E2E')`,
     [student.id, student.firstName, student.lastName, student.phone, otherStudent.id, `Test ${suffix} B`, otherStudent.phone],
   );
-  await db.query("INSERT INTO guardians (id, full_name, phone) VALUES ($1, 'E2E Veli', '+900000000000')", [guardianId]);
-  await db.query("INSERT INTO student_guardians (student_id, guardian_id) VALUES ($1, $2)", [student.id, guardianId]);
+  await db.query("INSERT INTO guardians (id, full_name, phone) VALUES ($1, 'E2E Veli', '+900000000000'), ($2, 'E2E Veli 2', '+900000000001')", guardianIds);
+  await db.query("INSERT INTO student_guardians (student_id, guardian_id) VALUES ($1, $2), ($1, $3)", [student.id, ...guardianIds]);
   await db.query(`INSERT INTO kiosks (id, name, secret, status, whatsapp_enabled)
      VALUES ($1, $2, $3, 'ACTIVE', true), ($4, $5, $6, 'DISABLED', true), ($7, $8, $9, 'ACTIVE', false)`, [
     kiosk.id,
@@ -102,7 +103,7 @@ async function cleanup() {
   await db.query("DELETE FROM scan_attempts WHERE device_id = ANY($1)", [deviceIds]);
   // devices, attendance_events, wp_messages, student_guardians öğrenciyle birlikte silinir (CASCADE).
   await db.query("DELETE FROM students WHERE id = ANY($1)", [studentIds]);
-  await db.query("DELETE FROM guardians WHERE id = ANY($1)", [[guardianId]]);
+  await db.query("DELETE FROM guardians WHERE id = ANY($1)", [guardianIds]);
   await db.query("DELETE FROM kiosks WHERE id = ANY($1)", [kioskIds]);
   // Test tablet hesabının KIOSK_LOGIN / KIOSK_START kayıtları.
   await db.query("DELETE FROM audit_logs WHERE admin_user_id = $1", [kioskAccount.id]);
@@ -111,11 +112,11 @@ async function cleanup() {
     `SELECT (SELECT count(*) FROM students WHERE id = ANY($1))
           + (SELECT count(*) FROM devices WHERE id = ANY($2))
           + (SELECT count(*) FROM scan_attempts WHERE device_id = ANY($2))
-          + (SELECT count(*) FROM guardians WHERE id = $3)
+          + (SELECT count(*) FROM guardians WHERE id = ANY($3))
           + (SELECT count(*) FROM kiosks WHERE id = ANY($4))
           + (SELECT count(*) FROM admin_users WHERE id = $5)
           + (SELECT count(*) FROM audit_logs WHERE admin_user_id = $5) AS n`,
-    [studentIds, deviceIds, guardianId, kioskIds, kioskAccount.id],
+    [studentIds, deviceIds, guardianIds, kioskIds, kioskAccount.id],
   );
   check("temizlik: test kaydı kalmadı", Number(rows[0].n) === 0, rows[0]);
 }
@@ -295,7 +296,7 @@ async function run() {
   const stored = await db.query("SELECT source, kiosk_id, scan_attempt_id FROM attendance_events WHERE id = $1", [inEvent.eventId]);
   check("scan: attendance_events source APP + kiosk + deneme", stored.rows[0]?.source === "APP" && stored.rows[0]?.kiosk_id === kiosk.id && stored.rows[0]?.scan_attempt_id != null, stored.rows[0]);
   let msgs = await eventMessages(inEvent.eventId);
-  check("scan: veliye bir WhatsApp mesajı MOCK_SENT", msgs.length === 1 && msgs[0].status === "MOCK_SENT" && msgs[0].attempt_count === 1 && msgs[0].sent_at != null, msgs);
+  check("scan: iki veliye birer WhatsApp mesajı MOCK_SENT", msgs.length === 2 && msgs.every((m) => m.status === "MOCK_SENT" && m.attempt_count === 1 && m.sent_at != null), msgs);
 
   // ---- okutma: aynı QR tekrar → REPLAY
   r = await scan(studentToken, s0, { direction: "IN" });
@@ -314,7 +315,7 @@ async function run() {
     r = await scan(studentToken, s0 + 1);
     const messageCount = async () => (await db.query("SELECT count(*)::int AS n FROM wp_messages w JOIN attendance_events e ON e.id = w.event_id WHERE e.student_id = $1", [student.id])).rows[0].n;
     check("scan: pencere içinde → duplicate: true, son olay döner", r.status === 200 && r.data.duplicate === true && r.data.eventId === inEvent.eventId && r.data.direction === "IN", r);
-    check("scan: çift okutmada yeni wp_messages yok", (await messageCount()) === 1);
+    check("scan: çift okutmada yeni wp_messages yok", (await messageCount()) === guardianIds.length);
     await db.query("UPDATE attendance_events SET occurred_at = occurred_at - make_interval(secs => $3) WHERE id = $1 AND student_id = $2", [
       inEvent.eventId,
       student.id,
@@ -328,8 +329,12 @@ async function run() {
   check(`scan: pencere (${windowSeconds} sn) geçince → OUT`, r.status === 200 && r.data.direction === "OUT" && r.data.duplicate === false && r.data.eventId !== inEvent.eventId, r);
   check("scan: presence_status = OUT", (await presence()) === "OUT");
   msgs = await eventMessages(r.data?.eventId);
-  check("scan: çıkışta da veliye bir WhatsApp mesajı MOCK_SENT", msgs.length === 1 && msgs[0].status === "MOCK_SENT", msgs);
-  check("scan: WhatsApp mesajında kapı adı", msgs[0]?.body.includes(`(${kiosk.name})`), msgs);
+  check("scan: çıkışta da iki veliye WhatsApp mesajı MOCK_SENT", msgs.length === 2 && msgs.every((m) => m.status === "MOCK_SENT"), msgs);
+  check(
+    "scan: WhatsApp mesajında veli adı, öğrenci, kapı ve işlem",
+    msgs.some((m) => m.body.startsWith("Merhabalar E2E Veli,") && m.body.includes(`${student.firstName} ${student.lastName} öğrencimiz`) && m.body.includes(`${kiosk.name} konumundan çıkış yapmıştır.`)),
+    msgs,
+  );
 
   // ---- kapılar bağımsız: ikinci kapıdaki ilk okutma yön ister; birinci kapının durumu ve çift okutma penceresi onu etkilemez
   const doorSlot = currentSlot();

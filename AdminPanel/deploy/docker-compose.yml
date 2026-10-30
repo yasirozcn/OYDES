@@ -19,7 +19,8 @@ services:
       BLE_REQUIRED: ${BLE_REQUIRED:-false}
       DUPLICATE_WINDOW_SECONDS: ${DUPLICATE_WINDOW_SECONDS:-120}
       WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-mock}
-      SCHOOL_SHORT_NAME: ${SCHOOL_SHORT_NAME:-Izmir Fen}
+      INSIDER_API_KEY: ${INSIDER_API_KEY:-}
+      WHATSAPP_TEMPLATE: ${WHATSAPP_TEMPLATE:-}
       NODE_OPTIONS: --max-old-space-size=256
     networks: [default, devdb]
 

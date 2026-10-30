@@ -1,0 +1,178 @@
+# Theme
+
+Project: İzmir Fen giriş-çıkış — AdminPanel (Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4 via @import "tailwindcss" + @theme in globals.css; no component library — custom utility classes .btn/.input/.card/.table/.badge in globals.css; Server Components + Server Actions; Turkish UI). Mobile app QrScannerApp is Expo (out of scope for panel design). Brand logo: QrScannerApp/assets/logo.png.
+
+## Part 1 — Token summary
+
+Tailwind 4 `@theme` tokens (from globals.css):
+
+```
+--font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+--font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+--color-brand-50: #e3efe6;
+--color-brand-100: #cfe4d6;
+--color-brand-600: #17613c;
+--color-brand-700: #17613c;
+--color-brand-800: #0f4a2c;
+--color-slate-50: #f4f3ee;
+--color-slate-100: #eceae3;
+--color-slate-200: #dddad0;
+--color-slate-300: #c9c5b8;
+--color-slate-400: #6b7570;
+--color-slate-500: #4a564f;
+--color-slate-600: #3d4943;
+--color-slate-700: #2b3730;
+--color-slate-800: #1d2a23;
+--color-slate-900: #14211a;
+--color-emerald-50: #e3efe6;
+--color-emerald-100: #cfe4d6;
+--color-emerald-600: #17613c;
+--color-emerald-700: #0f4a2c;
+--color-sky-50: #e4ecf8;
+--color-sky-100: #d3e0f4;
+--color-sky-600: #1e4fa8;
+--color-sky-700: #173e85;
+--color-amber-50: #fbf0dc;
+--color-amber-100: #f6e2bd;
+--color-amber-700: #9a5b00;
+--color-amber-800: #7a4700;
+--color-red-50: #fce8e6;
+--color-red-100: #fce8e6;
+--color-red-200: #f1b8b2;
+--color-red-600: #b42318;
+--color-red-700: #b42318;
+--color-red-800: #8f1c13;
+--color-violet-50: #f1eefb;
+--color-violet-700: #4b2e99;
+```
+
+Palette intent: brand green #17613c, warm neutrals (#f4f3ee bg, #14211a ink), entry green, exit blue #1e4fa8, warning amber, error red, manual purple. Font: system/Geist via layout. Radius: cards ~18px, buttons/inputs ~12px. Mobile app brand color is #006160 (teal) with accent #F5B73D — logo lives in QrScannerApp/assets/logo.png.
+
+## Part 2 — Raw source
+
+### `AdminPanel/src/app/globals.css`
+
+```css
+@import "tailwindcss";
+
+/*
+ * Tasarım sistemi (Claude Design · "İzmir Fen Giriş-Çıkış").
+ * Sınıf adları değişmedi; yalnızca renk/ölçü değerleri tasarıma uyarlandı.
+ * slate/emerald/sky/red/amber/violet tonları tasarım paletine eşlendi, böylece
+ * sayfalardaki mevcut yardımcı sınıflar da yeni renkleri kullanır.
+ * Yazı tipi: dış istek yapmamak için sistem fontu.
+ */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --color-brand-50: #e3efe6;
+  --color-brand-100: #cfe4d6;
+  --color-brand-600: #17613c;
+  --color-brand-700: #17613c;
+  --color-brand-800: #0f4a2c;
+
+  /* Sıcak nötrler (zemin #F4F3EE, mürekkep #14211A) */
+  --color-slate-50: #f4f3ee;
+  --color-slate-100: #eceae3;
+  --color-slate-200: #dddad0;
+  --color-slate-300: #c9c5b8;
+  --color-slate-400: #6b7570;
+  --color-slate-500: #4a564f;
+  --color-slate-600: #3d4943;
+  --color-slate-700: #2b3730;
+  --color-slate-800: #1d2a23;
+  --color-slate-900: #14211a;
+
+  /* Giriş (yeşil) */
+  --color-emerald-50: #e3efe6;
+  --color-emerald-100: #cfe4d6;
+  --color-emerald-600: #17613c;
+  --color-emerald-700: #0f4a2c;
+
+  /* Çıkış (mavi) */
+  --color-sky-50: #e4ecf8;
+  --color-sky-100: #d3e0f4;
+  --color-sky-600: #1e4fa8;
+  --color-sky-700: #173e85;
+
+  /* Uyarı */
+  --color-amber-50: #fbf0dc;
+  --color-amber-100: #f6e2bd;
+  --color-amber-700: #9a5b00;
+  --color-amber-800: #7a4700;
+
+  /* Hata / şüpheli */
+  --color-red-50: #fce8e6;
+  --color-red-100: #fce8e6;
+  --color-red-200: #f1b8b2;
+  --color-red-600: #b42318;
+  --color-red-700: #b42318;
+  --color-red-800: #8f1c13;
+
+  /* Manuel kayıt */
+  --color-violet-50: #f1eefb;
+  --color-violet-700: #4b2e99;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3.5 text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-4 focus-visible:ring-brand-100 focus-visible:outline-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-brand-600 text-white hover:bg-brand-800;
+  }
+  .btn-secondary {
+    @apply border border-slate-300 bg-white text-slate-900 hover:bg-slate-100;
+  }
+  .btn-danger {
+    @apply border border-red-200 bg-white text-red-700 hover:bg-red-50;
+  }
+  .input {
+    @apply h-11 w-full rounded-xl border-[1.5px] border-slate-300 bg-white px-3.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-2 focus:border-brand-600 focus:ring-4 focus:ring-brand-50;
+  }
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white;
+  }
+  .table {
+    @apply w-full text-left text-[15px];
+  }
+  .table th {
+    @apply border-b border-slate-100 px-4 py-3 text-xs font-bold tracking-[0.06em] text-slate-500 uppercase;
+  }
+  .table td {
+    @apply border-b border-slate-100 px-4 py-3.5 align-middle;
+  }
+  .table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] leading-none font-bold whitespace-nowrap;
+  }
+
+  /* Sayfa başlığı ve açıklaması (tasarımdaki 34px başlık) */
+  .page-title {
+    @apply text-3xl font-bold tracking-[-0.01em] text-slate-900 md:text-[34px];
+  }
+  .page-sub {
+    @apply mt-1 max-w-3xl text-[15px] leading-relaxed text-slate-500;
+  }
+}
+```
+
+### `AdminPanel/postcss.config.mjs`
+
+```js
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+```
+

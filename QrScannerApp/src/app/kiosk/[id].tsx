@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Animated, Easing, PermissionsAndroid, Platform, Pressable, Text, useWindowDimensions, View, type LayoutRectangle } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KioskBeacon } from "@modules/kiosk-beacon";
 import { BluetoothGate } from "@/components/BluetoothGate";
 import { IconBack, IconBluetoothOff, IconIn, IconOut } from "@/components/icons";
@@ -46,6 +47,7 @@ export default function KioskScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { adminToken, clearAdminSession } = useSession();
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [start, setStart] = useState<KioskStart | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -205,6 +207,10 @@ export default function KioskScreen() {
 
   const landscape = width > height;
   const tablet = Math.min(width, height) >= TABLET_MIN_SIDE;
+  // Adımlar yan yana yerleşimde telefonda da gösterilir (panelin ortası boş kalmasın); dikey telefonda yer yok.
+  const showSteps = tablet || landscape;
+  const panelPadX = tablet ? 40 : 24;
+  const panelPadY = tablet ? 36 : 18;
   // QR, kendisine kalan alanın tamamına sığacak kadar büyük olur (telefonda alttaki satırlarla çakışmaz, tablette ekranı doldurur).
   const qrFit = qrArea ? Math.min(qrArea.width - QR_FRAME, qrArea.height - QR_FRAME - QR_FOOTER_HEIGHT) : 0;
   const qrSize = Math.max(Math.min(qrFit * QR_AREA_FILL, tablet ? 720 : 480), 140);
@@ -227,10 +233,22 @@ export default function KioskScreen() {
   const steps = ["Okul uygulamasını açın", "\"QR okut\"a basıp bu kodu okutun", "Adınızı ekranda görünce geçin"];
 
   return (
-    <Screen padded={false} style={{ backgroundColor: colors.white }}>
+    // Screen kullanılmaz: güvenli alan boşlukları dışarıda beyaz kalıyordu. Yeşil panel ekranın kenarlarına kadar uzanır,
+    // çentik / ana ekran çizgisi payı panelin ve QR alanının iç boşluğuna eklenir.
+    <View style={{ flex: 1, backgroundColor: colors.white }}>
       <View style={{ flex: 1, flexDirection: landscape ? "row" : "column" }}>
         {/* Yeşil bilgi paneli */}
-        <View style={{ width: landscape ? Math.min(width * 0.375, 520) : "100%", backgroundColor: colors.brand, paddingHorizontal: tablet ? 40 : 24, paddingVertical: tablet ? 36 : 18, gap: tablet ? 24 : 12 }}>
+        <View
+          style={{
+            width: landscape ? Math.min(width * 0.375, 520) + insets.left : "100%",
+            backgroundColor: colors.brand,
+            paddingTop: panelPadY + insets.top,
+            paddingBottom: panelPadY + (landscape ? insets.bottom : 0),
+            paddingLeft: panelPadX + insets.left,
+            paddingRight: panelPadX + (landscape ? 0 : insets.right),
+            gap: tablet ? 24 : 12,
+          }}
+        >
           <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
             <Pressable
               accessibilityRole="button"
@@ -268,20 +286,20 @@ export default function KioskScreen() {
             )}
           </View>
 
-          {/* Adımlar (yalnızca tablette) ve bağlantı durumu panelin altındadır. */}
-          {tablet && (
-            <View style={{ gap: 18 }}>
+          {/* Adımlar ve bağlantı durumu panelin altındadır. */}
+          {showSteps && (
+            <View style={{ gap: tablet ? 18 : 10 }}>
               {steps.map((t, i) => (
-                <View key={t} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ fontSize: 18, fontWeight: "700", fontFamily: mono, color: colors.brand }}>{i + 1}</Text>
+                <View key={t} style={{ flexDirection: "row", alignItems: "center", gap: tablet ? 14 : 10 }}>
+                  <View style={{ width: tablet ? 40 : 28, height: tablet ? 40 : 28, borderRadius: tablet ? 20 : 14, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" }}>
+                    <Text style={{ fontSize: tablet ? 18 : 14, fontWeight: "700", fontFamily: mono, color: colors.brand }}>{i + 1}</Text>
                   </View>
-                  <Text style={{ flex: 1, fontSize: 20, fontWeight: "600", lineHeight: 26, color: colors.white }}>{t}</Text>
+                  <Text style={{ flex: 1, fontSize: tablet ? 20 : 15, fontWeight: "600", lineHeight: tablet ? 26 : 20, color: colors.white }}>{t}</Text>
                 </View>
               ))}
             </View>
           )}
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: 8, paddingTop: tablet ? 20 : 12, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.16)" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: online ? colors.brandSoft : colors.dangerLine }} />
               <Text style={{ fontSize: 14, fontWeight: online ? "400" : "700", color: "#CFE4D6" }}>{online ? "Sunucu bağlantısı var" : "Sunucuya ulaşılamıyor"}</Text>
@@ -294,7 +312,15 @@ export default function KioskScreen() {
         </View>
 
         {/* QR alanı */}
-        <View style={{ flex: 1, paddingHorizontal: tablet ? 32 : 16, paddingTop: tablet ? 24 : 12 }}>
+        <View
+          style={{
+            flex: 1,
+            paddingTop: (tablet ? 24 : 12) + (landscape ? insets.top : 0),
+            paddingBottom: (tablet ? 24 : 12) + insets.bottom,
+            paddingLeft: tablet ? 32 : 16,
+            paddingRight: (tablet ? 32 : 16) + insets.right,
+          }}
+        >
           {bleAlert && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: 18, backgroundColor: colors.dangerSoft }}>
               <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}>
@@ -314,6 +340,6 @@ export default function KioskScreen() {
         </View>
       </View>
       <BluetoothGate />
-    </Screen>
+    </View>
   );
 }

@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, ScrollView, Text, useWindowDimensions, View } from "react-native";
-import { Button, ErrorBox, Field, LegalLinks, Logo, Screen, TextLink, Title, TopBar } from "@/components/ui";
+import { Text, useWindowDimensions, View } from "react-native";
+import { Button, ErrorBox, Field, KeyboardForm, LegalLinks, Logo, Screen, TextLink, Title, TopBar } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { colors } from "@/lib/config";
 import { useSession } from "@/lib/session";
@@ -47,40 +47,44 @@ export default function AdminLogin() {
     }
   };
 
+  const button = { minHeight: 60, borderRadius: 16 };
   const form = (
     <>
       <TopBar step={step === "email" ? "Adım 1 / 2" : "Adım 2 / 2"} onBack={back} />
-      <ScrollView keyboardShouldPersistTaps="always" style={{ flex: 1, width: "100%", maxWidth: 440, alignSelf: "center" }} contentContainerStyle={{ flexGrow: 1, justifyContent: wide ? "center" : "flex-start" }}>
+      <KeyboardForm
+        style={{ width: "100%", maxWidth: 440, alignSelf: "center" }}
+        contentStyle={wide ? { justifyContent: "center" } : undefined}
+        footer={
+          <>
+            {step === "email" ? (
+              <>
+                <Button title="Devam" onPress={() => setStep("password")} disabled={!EMAIL_PATTERN.test(email.trim())} style={button} />
+                <TextLink title="Öğrenci girişine dön" onPress={() => router.replace("/student-login")} />
+              </>
+            ) : (
+              <Button title="Giriş yap" onPress={submit} loading={loading} disabled={password.length === 0} style={button} />
+            )}
+            <LegalLinks />
+          </>
+        }
+      >
         {step === "email" ? (
           <>
             <Title>E-postanızı girin</Title>
             <Field label="E-posta" value={email} onChangeText={setEmail} autoFocus autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="username" />
-            {!wide && <View style={{ flex: 1, minHeight: 16 }} />}
-            <Button title="Devam" onPress={() => setStep("password")} disabled={!EMAIL_PATTERN.test(email.trim())} style={{ minHeight: 60, borderRadius: 16 }} />
-            <TextLink title="Öğrenci girişine dön" onPress={() => router.replace("/student-login")} />
           </>
         ) : (
           <>
             <Title>Şifrenizi girin</Title>
             <Field label="Şifre" value={password} onChangeText={setPassword} autoFocus secureTextEntry textContentType="password" onSubmitEditing={submit} />
             <ErrorBox message={error} />
-            {!wide && <View style={{ flex: 1, minHeight: 16 }} />}
-            <Button title="Giriş yap" onPress={submit} loading={loading} disabled={password.length === 0} style={{ minHeight: 60, borderRadius: 16 }} />
           </>
         )}
-        <LegalLinks />
-      </ScrollView>
+      </KeyboardForm>
     </>
   );
 
-  if (!wide)
-    return (
-      <Screen>
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          {form}
-        </KeyboardAvoidingView>
-      </Screen>
-    );
+  if (!wide) return <Screen>{form}</Screen>;
 
   return (
     <Screen padded={false} style={{ backgroundColor: colors.white }}>
@@ -89,9 +93,7 @@ export default function AdminLogin() {
           <Logo />
           <Text style={{ fontSize: 34, lineHeight: 40, fontWeight: "800", letterSpacing: -0.6, color: colors.white }}>Bu tableti kapı ekranına dönüştürün</Text>
         </View>
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1, paddingHorizontal: 40, paddingVertical: 24 }}>
-          {form}
-        </KeyboardAvoidingView>
+        <View style={{ flex: 1, paddingHorizontal: 40, paddingVertical: 24 }}>{form}</View>
       </View>
     </Screen>
   );

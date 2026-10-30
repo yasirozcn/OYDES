@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Tasarım sistemi (Claude Design · "İzmir Fen Giriş-Çıkış").
+ * Tasarım sistemi (Superdesign · DOQR paleti, .superdesign/design-system.md).
  * Sınıf adları değişmedi; yalnızca renk/ölçü değerleri tasarıma uyarlandı.
  * slate/emerald/sky/red/amber/violet tonları tasarım paletine eşlendi, böylece
  * sayfalardaki mevcut yardımcı sınıflar da yeni renkleri kullanır.
@@ -11,29 +11,31 @@
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  --color-brand-50: #e3efe6;
-  --color-brand-100: #cfe4d6;
-  --color-brand-600: #17613c;
-  --color-brand-700: #17613c;
-  --color-brand-800: #0f4a2c;
+  /* DOQR uygulamasıyla aynı palet (QrScannerApp/src/lib/config.ts → colors) */
+  --color-brand-50: #ddefee;
+  --color-brand-100: #c6e3e1;
+  --color-brand-600: #006160;
+  --color-brand-700: #006160;
+  --color-brand-800: #004746;
+  --color-accent: #f5b73d;
 
-  /* Sıcak nötrler (zemin #F4F3EE, mürekkep #14211A) */
-  --color-slate-50: #f4f3ee;
+  /* Sıcak nötrler: zemin #F7F6F2, çizgi #E2DFD6, mürekkep #14211A */
+  --color-slate-50: #f7f6f2;
   --color-slate-100: #eceae3;
-  --color-slate-200: #dddad0;
-  --color-slate-300: #c9c5b8;
+  --color-slate-200: #e2dfd6;
+  --color-slate-300: #a8a294;
   --color-slate-400: #6b7570;
-  --color-slate-500: #4a564f;
-  --color-slate-600: #3d4943;
-  --color-slate-700: #2b3730;
+  --color-slate-500: #6b7570;
+  --color-slate-600: #3d433f;
+  --color-slate-700: #3d433f;
   --color-slate-800: #1d2a23;
   --color-slate-900: #14211a;
 
-  /* Giriş (yeşil) */
-  --color-emerald-50: #e3efe6;
-  --color-emerald-100: #cfe4d6;
-  --color-emerald-600: #17613c;
-  --color-emerald-700: #0f4a2c;
+  /* Giriş / içeride (ana renk) */
+  --color-emerald-50: #ddefee;
+  --color-emerald-100: #c6e3e1;
+  --color-emerald-600: #006160;
+  --color-emerald-700: #004746;
 
   /* Çıkış (mavi) */
   --color-sky-50: #e4ecf8;
@@ -47,12 +49,12 @@
   --color-amber-700: #9a5b00;
   --color-amber-800: #7a4700;
 
-  /* Hata / şüpheli */
+  /* Hata / silme */
   --color-red-50: #fce8e6;
   --color-red-100: #fce8e6;
   --color-red-200: #f1b8b2;
-  --color-red-600: #b42318;
-  --color-red-700: #b42318;
+  --color-red-600: #d04a3b;
+  --color-red-700: #d04a3b;
   --color-red-800: #8f1c13;
 
   /* Manuel kayıt */
@@ -66,7 +68,7 @@ body {
 
 @layer components {
   .btn {
-    @apply inline-flex h-10 items-center justify-center gap-1.5 rounded-[10px] px-3.5 text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-4 focus-visible:ring-brand-100 focus-visible:outline-none disabled:opacity-50;
+    @apply inline-flex h-9 items-center justify-center gap-1.5 rounded-[10px] px-3.5 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50;
   }
   .btn-primary {
     @apply bg-brand-600 text-white hover:bg-brand-800;
@@ -77,33 +79,44 @@ body {
   .btn-danger {
     @apply border border-red-200 bg-white text-red-700 hover:bg-red-50;
   }
+  .btn-sm {
+    @apply h-7 gap-1 px-2 text-xs;
+  }
+  /* Tablo satırı işlemleri: 32px ikon düğmesi (adı title/aria-label'da) */
+  .btn-icon {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors outline-none hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-brand-600;
+  }
+  .btn-icon-danger {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-700 transition-colors outline-none hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-red-700;
+  }
   .input {
-    @apply h-11 w-full rounded-xl border-[1.5px] border-slate-300 bg-white px-3.5 text-[15px] text-slate-900 outline-none placeholder:text-slate-400 focus:border-2 focus:border-brand-600 focus:ring-4 focus:ring-brand-50;
+    @apply h-10 w-full rounded-[10px] border border-slate-200 bg-white px-3.5 text-sm text-slate-900 transition-shadow outline-none placeholder:text-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20;
   }
   .card {
-    @apply rounded-2xl border border-slate-200 bg-white;
+    @apply rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(20,33,26,0.06)];
   }
   .table {
-    @apply w-full text-left text-[15px];
+    @apply w-full text-left text-sm;
   }
   .table th {
     @apply border-b border-slate-100 px-4 py-3 text-xs font-bold tracking-[0.06em] text-slate-500 uppercase;
   }
   .table td {
-    @apply border-b border-slate-100 px-4 py-3.5 align-middle;
+    @apply border-b border-slate-100 px-4 py-3 align-middle;
   }
   .table tbody tr:last-child td {
     @apply border-b-0;
   }
   .badge {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] leading-none font-bold whitespace-nowrap;
+    @apply inline-flex h-[22px] items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold whitespace-nowrap;
   }
-
-  /* Sayfa başlığı ve açıklaması (tasarımdaki 34px başlık) */
   .page-title {
-    @apply text-3xl font-bold tracking-[-0.01em] text-slate-900 md:text-[34px];
+    @apply text-[28px] leading-tight font-extrabold tracking-[-0.5px] text-slate-900;
   }
   .page-sub {
-    @apply mt-1 max-w-3xl text-[15px] leading-relaxed text-slate-500;
+    @apply mt-2 max-w-3xl text-sm leading-relaxed text-slate-600;
+  }
+  .section-title {
+    @apply text-lg font-bold text-slate-900;
   }
 }

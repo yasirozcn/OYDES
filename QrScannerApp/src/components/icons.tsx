@@ -31,4 +31,5 @@ export const IconShield = make("M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 1
 export const IconMail = make("M3 6h18v12H3zM3 7l9 6 9-6", 1.8);
 export const IconLogout = make("M15 17l5-5-5-5M20 12H9M12 4H6a2 2 0 00-2 2v12a2 2 0 002 2h6");
 export const IconDoor = make("M7 21V4h10v17M4 21h16M14 12v.01");
+export const IconRefresh = make("M21 12a9 9 0 11-2.64-6.36L21 8M21 3v5h-5");
 export const IconClock = make("M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3 2");

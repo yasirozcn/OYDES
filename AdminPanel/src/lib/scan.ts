@@ -13,7 +13,7 @@ import {
 } from "./db/repo";
 import type { AttendanceEvent, Direction, Kiosk, RejectReason } from "./db/types";
 import { SLOT_TOLERANCE_FUTURE, SLOT_TOLERANCE_PAST, bleToken, currentSlot, parseQrPayload, qrSignature, requestSignature, safeEqual } from "./protocol";
-import { buildWhatsAppBody, dispatchWhatsApp } from "./whatsapp";
+import { buildWhatsAppMessage, dispatchWhatsApp } from "./whatsapp";
 
 export const REJECT_MESSAGES: Record<RejectReason, string> = {
   INVALID_QR: "Bu QR kod okul kioskuna ait değil.",
@@ -137,7 +137,7 @@ export async function processScan(input: ScanInput): Promise<ScanResult> {
     kioskId: kiosk.id,
     scanAttemptId: attempt.id,
     notifyGuardians: kiosk.whatsappEnabled,
-    buildMessage: (s) => buildWhatsAppBody(s, direction, occurredAt, kiosk.name),
+    buildMessage: (s, guardianName) => buildWhatsAppMessage(guardianName, s, direction, occurredAt, kiosk.name),
   });
   // WhatsApp gönderimi yanıtı bekletmesin (kioskta WhatsApp kapalıysa mesaj listesi boştur).
   void dispatchWhatsApp(messages);
@@ -155,7 +155,7 @@ export async function manualEvent(studentId: string, kiosk: Kiosk, direction: Di
     scanAttemptId: null,
     note,
     notifyGuardians: kiosk.whatsappEnabled,
-    buildMessage: (s) => buildWhatsAppBody(s, direction, occurredAt, kiosk.name),
+    buildMessage: (s, guardianName) => buildWhatsAppMessage(guardianName, s, direction, occurredAt, kiosk.name),
   });
   void dispatchWhatsApp(messages);
   return event;

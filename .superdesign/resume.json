@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/ogrenciler": {
+      "targetKind": "existing-ui",
+      "projectId": "4012ec91-749c-42f6-8cc3-8fee76adca04",
+      "baselineDraftId": "59002d06-6646-4c81-88bc-ba850c95262b",
+      "activeDraftId": "74dca98e-21d7-4d50-97f8-0c3275022910",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "QrScannerApp-assets-logo.png",
+        "3913143e-9d24-41fe-926b-2b416e275dca"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "QrScannerApp-assets-logo.png",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/4012ec91-749c-42f6-8cc3-8fee76adca04/brand-assets/QrScannerApp-assets-logo.png/logo.png",
+          "sourcePath": "QrScannerApp/assets/logo.png"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "AdminPanel/src/app/globals.css",
+        "AdminPanel/src/app/(panel)/layout.tsx",
+        "AdminPanel/src/app/(panel)/NavLinks.tsx",
+        "AdminPanel/src/app/(panel)/ogrenciler/page.tsx",
+        "AdminPanel/src/app/(panel)/ogrenciler/StudentForms.tsx"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "ad2f69481b22e48a2b3c6b50a12b9f87ab4ab7b73aa0d79ba0c7160c6eb7225a",
+        "AdminPanel/src/app/globals.css": "d0953e474000931b602aebba9f0668f1704462ff7dfeef7f46e2a7f4e9d211fd",
+        "AdminPanel/src/app/(panel)/layout.tsx": "2b0ebac4c01de40fec2ba28d84f859c49a3bc2d4f0ba18f4d61544d7813e0d8f",
+        "AdminPanel/src/app/(panel)/NavLinks.tsx": "059bdd13cb9849b5a11ce2ba13e02b6befdcaacc41b9cc63768852d161d4f12c",
+        "AdminPanel/src/app/(panel)/ogrenciler/page.tsx": "0bedc99357bf06e9022902dac466f1caae7c65a1ea1542cd37a08484aa59c4e0",
+        "AdminPanel/src/app/(panel)/ogrenciler/StudentForms.tsx": "b6d67ef63b7e3bbc9cd34df5528e0065b2040f21e429cc5faaa67a48b8b7fed8"
+      },
+      "components": [],
+      "drafts": {
+        "59002d06-6646-4c81-88bc-ba850c95262b": {
+          "title": "Current Öğrenciler (baseline)",
+          "visualDirection": "faithful reproduction",
+          "currentVersion": 1
+        },
+        "74dca98e-21d7-4d50-97f8-0c3275022910": {
+          "title": "Öğrenciler — DOQR palette redesign",
+          "visualDirection": "DOQR teal palette, real logo, icon buttons, no overflow",
+          "parentDraftId": "59002d06-6646-4c81-88bc-ba850c95262b",
+          "currentVersion": 1
+        }
+      },
+      "updatedAt": "2026-10-30T08:12:14.704125+00:00"
+    }
+  }
+}

@@ -3,6 +3,7 @@
 // Tablo ve kolonlar db/schema.sql'de; satırlar camelCase'e çevrilip types.ts'teki tiplerle döner.
 
 import { randomBytes } from "crypto";
+import type { PoolClient } from "pg";
 import { camel, insertRow, q, tx } from "./pg";
 import type {
   AdminUser,
@@ -54,7 +55,7 @@ export async function listStudents(): Promise<StudentRow[]> {
   }));
 }
 
-export async function createStudent(input: {
+export type NewStudent = {
   schoolNo: string;
   firstName: string;
   lastName: string;
@@ -62,32 +63,68 @@ export async function createStudent(input: {
   phone: string;
   email: string | null;
   className: string;
-  guardianName: string;
-  guardianPhone: string;
-}): Promise<Student> {
+  /** En fazla iki veli; her birine giriş-çıkış WhatsApp mesajı gider. */
+  guardians: { fullName: string; phone: string }[];
+};
+
+async function insertStudent(c: PoolClient, input: NewStudent): Promise<Student> {
+  const dup = await c.query("SELECT 1 FROM students WHERE phone = $1", [input.phone]);
+  if (dup.rows.length) throw new Error("Bu telefon numarası ile kayıtlı bir öğrenci var.");
+  const student: Student = {
+    id: newId("stu"),
+    schoolNo: input.schoolNo.trim(),
+    firstName: input.firstName.trim(),
+    lastName: input.lastName.trim(),
+    email: input.email?.trim().toLowerCase() || null,
+    phone: input.phone,
+    className: input.className.trim(),
+    passwordHash: null,
+    presenceStatus: "OUT",
+    isActive: true,
+    createdAt: nowIso(),
+  };
+  await insertRow(c, "students", student);
+  for (const g of input.guardians) {
+    const guardian: Guardian = { id: newId("gua"), fullName: g.fullName.trim() || "Veli", phone: g.phone };
+    await insertRow(c, "guardians", guardian);
+    await insertRow(c, "student_guardians", { studentId: student.id, guardianId: guardian.id, relation: "Veli", notifyEntry: true, notifyExit: true });
+  }
+  return student;
+}
+
+export function createStudent(input: NewStudent): Promise<Student> {
+  return tx((c) => insertStudent(c, input));
+}
+
+/** CSV ile toplu ekleme: hepsi tek transaction'da; bir satır bile eklenemezse hiçbiri eklenmez. */
+export function createStudents(inputs: NewStudent[]): Promise<Student[]> {
   return tx(async (c) => {
-    const dup = await c.query("SELECT 1 FROM students WHERE phone = $1", [input.phone]);
-    if (dup.rows.length) throw new Error("Bu telefon numarası ile kayıtlı bir öğrenci var.");
-    const student: Student = {
-      id: newId("stu"),
-      schoolNo: input.schoolNo.trim(),
-      firstName: input.firstName.trim(),
-      lastName: input.lastName.trim(),
-      email: input.email?.trim().toLowerCase() || null,
-      phone: input.phone,
-      className: input.className.trim(),
-      passwordHash: null,
-      presenceStatus: "OUT",
-      isActive: true,
-      createdAt: nowIso(),
-    };
-    await insertRow(c, "students", student);
-    if (input.guardianPhone.trim()) {
-      const guardian: Guardian = { id: newId("gua"), fullName: input.guardianName.trim() || "Veli", phone: input.guardianPhone.trim() };
-      await insertRow(c, "guardians", guardian);
-      await insertRow(c, "student_guardians", { studentId: student.id, guardianId: guardian.id, relation: "Veli", notifyEntry: true, notifyExit: true });
-    }
-    return student;
+    const students: Student[] = [];
+    for (const input of inputs) students.push(await insertStudent(c, input));
+    return students;
+  });
+}
+
+/** Verilen telefonlardan zaten bir öğrenciye ait olanlar. */
+export async function findTakenStudentPhones(phones: string[]): Promise<string[]> {
+  const rows = await q<{ phone: string }>("SELECT phone FROM students WHERE phone = ANY($1)", [phones]);
+  return rows.map((r) => r.phone);
+}
+
+/**
+ * Öğrenciyi kalıcı siler. Cihazları, giriş-çıkış kayıtları ve WhatsApp kayıtları da silinir (FK ON DELETE CASCADE);
+ * okutma denemeleri kalır (student_id NULL olur). Başka öğrenciye bağlı olmayan velileri de silinir. Öğrenci yoksa null döner.
+ */
+export function deleteStudent(id: string): Promise<Student | null> {
+  return tx(async (c) => {
+    const guardianIds = (await c.query("SELECT guardian_id FROM student_guardians WHERE student_id = $1", [id])).rows.map((r) => r.guardian_id as string);
+    const row = (await c.query("DELETE FROM students WHERE id = $1 RETURNING *", [id])).rows[0];
+    if (!row) return null;
+    await c.query(
+      "DELETE FROM guardians g WHERE g.id = ANY($1) AND NOT EXISTS (SELECT 1 FROM student_guardians sg WHERE sg.guardian_id = g.id)",
+      [guardianIds],
+    );
+    return camel<Student>(row);
   });
 }
 
@@ -264,6 +301,9 @@ export function listDoorPresence(): Promise<{ studentId: string; kioskId: string
 }
 
 /** Kabul edilen bir giriş/çıkışı kaydeder: olay + öğrenci durumu + veli WhatsApp mesajları tek transaction'da. */
+/** Gönderilecek mesaj: kayıtla birlikte WhatsApp şablonunun gövde parametreleri (yalnızca bellekte; veritabanına yazılmaz). */
+export type OutgoingWhatsApp = WhatsAppMessage & { templateParams: string[] };
+
 export async function createEventWithWhatsApp(input: {
   studentId: string;
   direction: Direction;
@@ -273,8 +313,9 @@ export async function createEventWithWhatsApp(input: {
   note?: string | null;
   /** Kioskun WhatsApp ayarı; false ise veliye mesaj yazılmaz. */
   notifyGuardians: boolean;
-  buildMessage: (student: Student) => string;
-}): Promise<{ event: AttendanceEvent; messages: WhatsAppMessage[] }> {
+  /** Her veli için mesaj metni (wp_messages.body) ve şablon parametreleri. */
+  buildMessage: (student: Student, guardianName: string) => { body: string; templateParams: string[] };
+}): Promise<{ event: AttendanceEvent; messages: OutgoingWhatsApp[] }> {
   return tx(async (c) => {
     const s = (await c.query("SELECT * FROM students WHERE id = $1 FOR UPDATE", [input.studentId])).rows[0];
     if (!s) throw new Error("Öğrenci bulunamadı.");
@@ -296,22 +337,23 @@ export async function createEventWithWhatsApp(input: {
     await c.query("UPDATE students SET presence_status = $2 WHERE id = $1", [student.id, input.direction]);
     student.presenceStatus = input.direction;
 
-    const messages: WhatsAppMessage[] = [];
+    const messages: OutgoingWhatsApp[] = [];
     if (!input.notifyGuardians) return { event, messages };
     const guardians = (
       await c.query(
-        `SELECT g.id, g.phone FROM student_guardians sg JOIN guardians g ON g.id = sg.guardian_id
+        `SELECT g.id, g.phone, g.full_name FROM student_guardians sg JOIN guardians g ON g.id = sg.guardian_id
          WHERE sg.student_id = $1 AND (CASE WHEN $2 = 'IN' THEN sg.notify_entry ELSE sg.notify_exit END)`,
         [student.id, input.direction],
       )
-    ).rows as { id: string; phone: string }[];
+    ).rows as { id: string; phone: string; full_name: string }[];
     for (const g of guardians) {
+      const { body, templateParams } = input.buildMessage(student, g.full_name);
       const msg: WhatsAppMessage = {
         id: newId("wpm"),
         eventId: event.id,
         guardianId: g.id,
         phone: g.phone,
-        body: input.buildMessage(student),
+        body,
         providerMessageId: null,
         status: "QUEUED",
         attemptCount: 0,
@@ -320,7 +362,7 @@ export async function createEventWithWhatsApp(input: {
         createdAt: now,
       };
       await insertRow(c, "wp_messages", msg);
-      messages.push(msg);
+      messages.push({ ...msg, templateParams });
     }
     return { event, messages };
   });
